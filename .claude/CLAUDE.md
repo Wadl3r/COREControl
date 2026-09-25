@@ -1,121 +1,102 @@
-# MUST FOLLOW INSTRUCTIONS
-Reason step-by-step and verify. Communicate concisely and precisely, in formal language
-regardless of the user's style.
+# CORE Control
 
-Follow a PLAYER story/flow -> UX -> engine hook development flow: what the commander does, what
-they see, then which game type or Harmony patch delivers it. Ask about the desired flow if unclear.
+BepInEx 5 plugin for Nuclear Option (Unity 2022.3, `net472`, Harmony). It adds an RTS command layer
+on top of the game: free camera, selection and orders, production and economy, air tasking, and AI
+commanders for any faction. Player-facing behaviour is in `README.md`, build and install details in
+`BUILD.md`.
 
-Only commit/push if explicitly requested by the user. Use descriptive names. Constants at class
-level with a `<summary>` saying what the number means and why it is that value. No gameplay
-behaviour change without a conductor track or an explicit user instruction.
+Fork of AMAUKDev/RTS-Commander ("Ground Control (RTS)"), git remote `upstream`. Upstream is a source
+to cherry-pick from. The C# namespace is still `GroundControlRts` so cherry-picks apply cleanly.
 
-Handle simple merge conflicts yourself; refer complex conflicts and anything with ripple effects
-to the user. Upstream is `simonsimme/RTS-Commander` (`git fetch upstream`); keep our changes in
-their own services/files where possible so upstream merges stay clean.
+## Identity
 
-## Project shape (read before touching code)
+`Core/PluginInfo.cs` holds every name that must differ from upstream: the GUID
+`com.wadl3r.corecontrol` (also the Harmony id and the config file name), the display name, the
+shipped mission names, the save folder name, and the upstream GUIDs that `[BepInIncompatibility]` in
+`Core/CommanderPlugin.cs` refuses to load beside. The version string appears in `COREControl.csproj`,
+`Core/AssemblyInfo.cs` and `Core/PluginInfo.cs` (the one BepInEx logs).
 
-- BepInEx 5 plugin for Nuclear Option (Unity, `net472`, Harmony). Build and install with
-  `.\build-and-install.ps1` (or `build-release.bat`); details in `BUILD.md`. Close the game first.
-  **Hot reload**: `build-dev.bat` (= `.\build-and-install.ps1 -Dev`) copies into `BepInEx\scripts\` and the
-  ScriptEngine plugin reloads the mod in the running game within ~3 s (F6 forces it). Use this
-  for in-game verification loops; a reload resets mod memory (upgrade levels, groups, AI plan
-  state) but not game state. Never leave the mod in both `plugins\` and `scripts\`.
-- Everything is a **service**: a class implementing the hooks in `Core/ICommanderService.cs`
-  (`Activate`, `Deactivate`, `TickActive`, `TickPersistent`, `ResetSession`), registered with one
-  line in `Core/CommanderModeController.cs`. Registration order is execution order. A new feature
-  is a new service plus one `Register` call, not new code inside an existing service.
-- Periodic game logic uses `CommanderScheduler.IsDue` (scaled time, pauses with the game). UI
-  refresh uses `IsDueRealtime`. Using the wrong one is a bug the changelog has already fixed once.
-- Settings live in `Core/CommanderSettings.cs` as BepInEx config entries with a `Get`/`Set` pair
-  and a touch in the warm-up list. Sliders and toggles in the settings window live in
-  `UI/CommanderOverlayUiSettings.cs`; follow the existing `Draw*Slider` helpers.
-- `Core/CommanderGameAccess.cs` wraps the game's internals. Look there before calling anything
-  from `Assembly-CSharp` directly.
-- The game has three factions per mission: ours (`CommanderGameAccess.GetLocalHq()`) and hostiles.
-  AI services iterate `FactionRegistry.GetAllHQs()` and skip the local HQ; that skip is the seam
-  for any "AI on the player side" work.
+## Build
 
-## Track shape — keep it lean (decided 2026-09-11)
+```
+dotnet build -c Release -p:GameDir="D:\Steam\steamapps\common\Nuclear Option"
+```
 
-The default for any conductor track. Exceeding a limit is not forbidden; it is a signal to come
-back to the user before continuing.
+- `GameDir` can also come from `NUCLEAR_OPTION_DIR`. Game assemblies are referenced from the install
+  and never copied. The build currently has 0 warnings.
+- `.claude/check.cmd` runs the same build quietly in about 2 s; its exit code is the result.
+- `build-and-install.ps1` (double-click: `build-release.bat`) builds and copies `bin\Release\net472\*`
+  into `BepInEx\plugins\COREControl\`. The mission JSON files must sit beside the DLL. Close the game
+  first; it locks the loaded DLL.
+- `build-dev.bat` hot-reloads into `BepInEx\scripts\` and needs the ScriptEngine plugin from
+  BepInEx.Debug, which this install does not have.
 
-- **Spec ≤ 2 pages.** Goal, problem with file:line evidence, the existing code being reused (see
-  Reuse), requirements, acceptance criteria, files in scope, out of scope. Decisions the user has
-  taken are recorded once; decisions still open are listed as NEEDS USER and asked immediately.
-- **Plan ≤ 20 tasks.** A task is ONE behaviour with its verification. Where a `SelfCheck` can
-  cover it, the failing self-check, the implementation and the passing check all live inside the
-  one task.
-- **One executor, one review, one grader.** One agent runs the whole plan (re-dispatched only if it
-  runs out of context), one independent review of the full diff, one evaluation with at most two
-  fix cycles, then a PR. Roughly 6–8 agent runs per track. State the expected agent count before
-  launching anything above ~20.
-- **Review once per PLAN, not per phase or per task.** The single mandatory independent review is
-  a `default` second-opinion panel on the PR diff before merge. A spec review is added only for
-  tracks that break the limits above. `max` is opt-in, only when the user asks.
-- Keep `conductor/` track files up to date; come back to the user for complex decisions.
+## Layout
 
-## Reuse rules — non-negotiable
+One folder per subsystem. Large services are split into partial classes by concern
+(`CommanderEconomyService.cs`, `CommanderEconomyServiceEnemy.cs`, `CommanderEconomyServiceCatalog.cs`).
 
-1. **Before planning ANY feature, find what already does this and READ it**, including comments
-   and the code around it — comments here record engine measurements and incidents the code alone
-   does not explain (the `ponytail:` remarks are deliberate scope cuts; respect them or argue them
-   in the spec). Prefer the code-review-graph MCP (`semantic_search_nodes`, `get_impact_radius`,
-   `query_graph`) for exploration and impact analysis; Grep for literals.
-2. **Name the existing thing in the spec, and why it does not fit** — for every NEW service,
-   setting, Harmony patch, scheduler, UI window or shared helper. "I did not find one" is
-   acceptable only after §1.
-3. **MOVE code, never paraphrase it from memory.** Cut and paste, rename on the way, leave a
-   pointer comment at the old site.
-4. **One definition, two callers.** Identical or near-identical strings or constants in two places
-   are the tell. If a second caller needs different behaviour, parameterise; never fork. The enemy
-   commander and the player deliberately share one price ladder and one siting rule — keep it so.
-5. **Generalise the second instance.** The second bounded retry, ceiling or "wait for N reviews"
-   pattern means extracting the first and retrofitting, behaviour-neutral.
-6. **Subagent briefs carry all of this**: name the code to read first and the pattern to follow.
+| Folder | Contents |
+| --- | --- |
+| `Core` | Plugin entry, service registry, scheduler, settings, feature gate, game-access wrapper, save stores |
+| `Units` | Selection, groups, move/attack orders, formations, markers, alerts, radar, repair |
+| `Camera`, `Map`, `UI` | Free and POV camera; tactical map; IMGUI windows including settings |
+| `Depot`, `Economy`, `Naval` | Ground purchases; buildings, mines, factories; naval dock and ship purchases |
+| `AirCommand` | Air missions for player and AI, driven through the game's pilot AI |
+| `Supply` | Helicopter cargo runs and airdrops |
+| `Ai` | Enemy and player-side AI commanders: buying, defence, capture, air roster |
+| `Operations` | AI platoons, front line, offensives, forward bases, air packages (32k lines, the largest) |
+| `Points` | Strategic points: discovery, holding, income |
+| `SamSites`, `Terrain` | SAM site analysis and construction; height-map sampling |
+| `Mission` | The two shipped duel missions |
 
-## Testing rules — non-negotiable
+## Architecture
 
-There is no unit-test project. The mod's automated checks are the `SelfCheck()` methods called
-from `Core/CommanderPlugin.cs` at plugin load, which log `self-check FAILED` to the BepInEx
-console. Everything else is verified in the running game.
+- **Services.** A feature is a class implementing some of the hook interfaces in
+  `Core/ICommanderService.cs`: `ICommanderActivate`/`ICommanderDeactivate` (entering and leaving RTS
+  mode), `ICommanderTickActive` (every frame in RTS mode), `ICommanderTickPersistent` (every frame,
+  including while the player flies), `ICommanderResetSession` (scene change), and
+  `ICommanderPersistState`/`ICommanderPersistStrategic` for saves. They are registered in
+  `CommanderModeController.Awake`; registration order is execution order.
+- **Tiers.** `CommanderTier.Advanced` services run only when `CommanderFeatureGate` passes: the
+  mission name contains Altercation, Confrontation, Domination, Escalation, Terminal Control or the
+  duel name, or the player pressed UNLOCK ALL FEATURES. Everything else is `CommanderTier.Core`.
+- **Time.** `CommanderScheduler.IsDue` runs on scaled time, so it stops when paused and speeds up at
+  2x/4x. `IsDueRealtime` is for UI refresh. `Stagger` spreads first runs apart.
+- **Settings.** BepInEx config entries in `Core/CommanderSettings.cs`, each a property over
+  `Get<T>(section, key, default)` / `Set`, plus a `_ = Property;` line in `Initialize` so the entry is
+  written to the config file on first run. The settings window is `UI/CommanderOverlayUiSettings.cs`.
+- **Game internals.** `Core/CommanderGameAccess.cs` wraps most of them. Harmony patches live in
+  `*Patches.cs` next to the service they serve; `harmony.PatchAll()` in `CommanderPlugin.Awake`
+  applies them all.
+- **AI commanders.** Review loops iterate `FactionRegistry.GetAllHQs()` and ask
+  `CommanderPlayerCommanderService.IsCommanded(hq, localHq)`: hostile factions follow the enemy
+  commander setting, the player's own faction follows the player commander switch.
+- **Files on disk.** `persistentDataPath` is `%USERPROFILE%\AppData\LocalLow\Shockfront\NuclearOption`.
+  The hot-reload snapshot and the strategic save are JSON in its `COREControlState\` folder
+  (`CommanderStateStore.StatePathFor`). `CommanderMissionInstaller` copies the shipped missions into
+  its `Missions\<name>\` on every normal load and overwrites them when the shipped copy changes.
 
-1. **Every decision table, price ladder or threshold gets a `SelfCheck` case** next to the
-   existing ones. If a constant can be retuned into nonsense, a self-check says so at load.
-2. **Never claim done without the running game.** Build, install with the script, launch, load
-   `CORE Control Duel` (or a supported stock mode), perform the actual player action, and read
-   `BepInEx\LogOutput.log` for the mod's own log lines and any `FAILED` or exception. The
-   developer launches and plays; you say exactly what to do and what log lines prove it.
-3. **Server-only calls are real.** Anything touching `factionFunds`, `AddSupplyUnit`, spawning or
-   `ModifyUnitSupply` must be guarded by `hq.IsServer`; a pure multiplayer client throws.
-4. **Placeholders are bugs.** If a real implementation is not feasible, say so and the task stays
-   open.
-5. **When you change a gate, hook or check, prove it still FAILS**: plant a defect, watch a NAMED
-   check fail, restore, confirm byte-identical. This rule is for gates, hooks and checks ONLY.
-   Corollaries for every hook in `.claude/settings.json` and `.claude/check.cmd`: time the command
-   before setting its timeout; never `|| true` without writing down why; never put slow work in
-   `PostToolUse`.
+## Engine facts
 
-## Second-opinion MCP
+- **String-named game members are not compile-checked.** 26 Harmony targets are given as
+  `[HarmonyPatch(typeof(X), "name")]`, and about 75 private members are reached through
+  `AccessTools` or `GetField` by name. After a game update, a missing Harmony target throws out of
+  `PatchAll` before the mode controller exists, which leaves the mod dead. A missing field makes its
+  lookup null, or throws from the type initializer for `FieldRefAccess`. Check them against
+  `NuclearOption_Data\Managed\Assembly-CSharp.dll` whenever the game updates.
+- **Server authority.** `FactionHQ.AddSupplyUnit` and `Spawner.SpawnUnit` are Mirage `[Server]`
+  methods and throw on a pure multiplayer client. `FactionHQ.AddFunds` and `ModifyUnitSupply` do not
+  throw; on a client they write local synced state and silently desync. That is why building,
+  spawning and AI commanders are host-only and the code checks `hq.IsServer`.
+- **Mission files.** The game's mission JSON converters go up to `JsonVersion` 6, the version the
+  shipped missions use. The game finds a mission's start objective by the name `Mission Start`
+  (`MissionObjectivesFactory.MissionStartName`); `CommanderMissionInstaller` warns if it is missing.
 
-`second-opinion-mcp` routes to a Claude Code session on a **different model family** via Ollama.
-Different blind spots, not more compute. Presets are decided server-side: pass `preset`, never
-model names.
+## Testing
 
-- **When:** the one mandatory use is the `default` panel on a PR diff before merge (see Track
-  shape). Also worth it for an unreproducible in-game bug or a high-confidence subjective call.
-  Skip for mechanical work and inside Tier 2 subagents.
-- **How:** `start_panel_review(prompt, preset: "default")` → `check_panel(panel_id)`; you
-  synthesise, no judge is called. Tell reviewers to write findings to a file and summarise. Do
-  not set `max_turns`. Treat output as peer review: verify disagreements against the code.
-- **Prerequisites:** `ollama serve` up on `127.0.0.1:11434` AND cloud credits. If unavailable,
-  substitute one Opus skeptic agent and record the deviation in the track's RESULT.md.
-
-## code-review-graph MCP
-
-A structural index of this repo. Prefer it for exploration, impact analysis and review
-(`semantic_search_nodes` with `kind="Function"`/`"Class"`, `get_impact_radius`,
-`get_affected_flows`, `detect_changes` + `get_review_context`). Grep/Glob/Read are fine for
-literals, config and non-code files. Freshness comes from the watch daemon
-(`code-review-graph daemon status` should show this repo `alive`), never from a `PostToolUse` hook.
+- There is no test project. 23 subsystem `SelfCheck()` methods and `CommanderServiceRegistryCheck.Run()`
+  run from `CommanderPlugin.Awake` and log `... self-check FAILED ...` as errors.
+- In-game check: install, launch Nuclear Option, host `CORE Control Duel`, then read
+  `D:\Steam\steamapps\common\Nuclear Option\BepInEx\LogOutput.log`. A clean load logs
+  `CORE Control 0.7.6.0 loaded`, and on first run one `Installed mission '...'` line per shipped mission.

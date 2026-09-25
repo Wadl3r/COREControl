@@ -835,7 +835,7 @@ dotnet build -c Release -p:GameDir="C:\Program Files (x86)\Steam\steamapps\commo
 `GameDir` can also come from a `NUCLEAR_OPTION_DIR` environment variable. The output DLL lands
 in `bin/Release/net472/` and goes into `BepInEx/plugins/COREControl/`.
 
-See [CLAUDE.md](CLAUDE.md) for the architecture notes and [CHANGELOG.md](CHANGELOG.md) for the
+See [CLAUDE.md](.claude/CLAUDE.md) for the architecture notes and [CHANGELOG.md](CHANGELOG.md) for the
 release history.
 
 ## Credits
