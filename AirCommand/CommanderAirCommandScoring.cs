@@ -776,40 +776,15 @@ internal sealed partial class CommanderAirCommandService
     /// (<see cref="IsReconRound"/>). No payload test: the catalog does not expose the AGM-48's
     /// payload either, so any such test refuses real weapons along with the sensor round
     /// (Departure 16, 2026-09-14).</param>
-    /// <summary>
-    /// The anti-surface effectiveness below which the scorer treats a store as unable to hurt ground
-    /// at all: 0.05. The same floor the CAS mount tests and the ordnance picker in this file already
-    /// use as a literal in five places; named here because the suppression rule needed it too, and a
-    /// sixth copy of a bare 0.05 would have been the copy that drifted. The existing five are
-    /// deliberately left alone for now — retrofitting them is behaviour-neutral but touches code
-    /// another session currently has open.
-    /// </summary>
-    internal const float AntiSurfaceEffectivenessFloor = 0.05f;
-
-    internal static bool IsAradCandidate(
-        bool missile, bool nuclear, bool hasArmSeeker, bool reconRound, bool deliversDamage, float antiSurface)
+    internal static bool IsAradCandidate(bool missile, bool nuclear, bool hasArmSeeker, bool reconRound)
     {
+        // Only a radar-homing seeker qualifies. Upstream 81bbfad also admitted any guided
+        // anti-surface missile with a warhead (AGM-99, AGM-68); that was reverted so a real ARM
+        // ranks first on a suppression pylon and the standoff stores stay secondary.
         return missile
             && !nuclear
             && !reconRound
-            // Widened 2026-09-18 (user: "widen ARAD to allowing aircraft carrying AGM-68s"). Until
-            // then only a radar-homing seeker qualified, and the roster made that almost unflyable:
-            // only three airframes carry the ARAD-116, and per faction exactly ONE was usable — the
-            // 390-value Alkyon AB-4 for Boscali, its own main fighter for Primeva. The measured match
-            // opened 31 suppression sorties and manned 9, with the package slot never filled once
-            // (conductor/designs/2026-09-18-arad-investigation.md).
-            //
-            // The second arm admits a guided anti-surface missile that carries a REAL warhead — the
-            // AGM-68 at pierce 700 / blast 120 — while still refusing the store that caused the
-            // incident this rule was written for. An Eyeball Mk.II is an AGM-48 with its warhead
-            // removed, so DeliversDamage is false for it and it is excluded exactly as before; the
-            // ordinary AGM-48, whose payload the catalog does not expose, is excluded too, which is
-            // the conservative side of that uncertainty.
-            //
-            // The anti-surface floor is what keeps an air-to-air missile out: those carry a warhead
-            // and are missiles, and without it every fighter on the roster would have qualified for
-            // suppression duty.
-            && (hasArmSeeker || (deliversDamage && antiSurface > AntiSurfaceEffectivenessFloor));
+            && hasArmSeeker;
     }
 
     private static bool IsAradWeapon(WeaponInfo info, WeaponMount? mount = null)
@@ -819,9 +794,7 @@ internal sealed partial class CommanderAirCommandService
                 info.missile,
                 info.nuclear,
                 info.weaponPrefab?.GetComponentInChildren<ARMSeeker>(true) != null,
-                IsReconRound(mount, info),
-                DeliversDamage(info.pierceDamage, info.blastDamage),
-                info.effectiveness.antiSurface);
+                IsReconRound(mount, info));
     }
 
     /// <summary>The anti-radiation stores in a built loadout, named, for the roster line
