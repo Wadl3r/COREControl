@@ -75,10 +75,26 @@ internal sealed partial class CommanderEnemyCommanderService
 
     /// <summary>
     /// <c>GroundVehicle.commandedDestination</c>. Private, and the only way back out of a pinned
-    /// position — see the remarks on this class.
+    /// position — see the remarks on this class. Null if a game update renames the field: this
+    /// initializer runs the first time the enemy commander type is touched, and a throw here used
+    /// to take the whole plugin down at load instead of just this one release.
     /// </summary>
-    private static readonly AccessTools.FieldRef<GroundVehicle, bool> CommandedDestinationRef =
-        AccessTools.FieldRefAccess<GroundVehicle, bool>("commandedDestination");
+    private static readonly AccessTools.FieldRef<GroundVehicle, bool>? CommandedDestinationRef =
+        ResolveCommandedDestination();
+
+    private static AccessTools.FieldRef<GroundVehicle, bool>? ResolveCommandedDestination()
+    {
+        try
+        {
+            return AccessTools.FieldRefAccess<GroundVehicle, bool>("commandedDestination");
+        }
+        catch (System.Exception exception)
+        {
+            CommanderPlugin.Log.LogError(
+                $"GroundVehicle.commandedDestination not found; released defenders stay pinned: {exception.Message}");
+            return null;
+        }
+    }
 
     /// <summary>
     /// True while this unit is standing on an enemy commander's base ring. Read by
@@ -390,7 +406,7 @@ internal sealed partial class CommanderEnemyCommanderService
             }
 
             state.Defenders.Remove(release);
-            if (release is GroundVehicle vehicle)
+            if (release is GroundVehicle vehicle && CommandedDestinationRef != null)
             {
                 CommandedDestinationRef(vehicle) = false;
             }

@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Reflection;
 using HarmonyLib;
 
@@ -27,13 +28,21 @@ internal static class CommanderAirCommandPatches
         List<WeaponStation> stationList,
         ref CombatAI.TargetSearchResults __result)
     {
-        if (!CommanderAirCommandService.TryChooseMissionTarget(searcher, stationList, out CombatAI.TargetSearchResults result))
+        try
         {
+            if (!CommanderAirCommandService.TryChooseMissionTarget(searcher, stationList, out CombatAI.TargetSearchResults result))
+            {
+                return true;
+            }
+
+            __result = result;
+            return false;
+        }
+        catch (Exception exception)
+        {
+            CommanderFaults.Report("CombatAI.ChooseHQTarget prefix", exception);
             return true;
         }
-
-        __result = result;
-        return false;
     }
 
     [HarmonyPatch(typeof(CombatAI), nameof(CombatAI.LookForMissileTargets))]
@@ -43,13 +52,21 @@ internal static class CommanderAirCommandPatches
         WeaponStation weaponStation,
         ref int __result)
     {
-        if (!CommanderAirCommandService.TryBuildAradSaturationTargets(aircraft, weaponStation, out int targetCount))
+        try
         {
+            if (!CommanderAirCommandService.TryBuildAradSaturationTargets(aircraft, weaponStation, out int targetCount))
+            {
+                return true;
+            }
+
+            __result = targetCount;
+            return false;
+        }
+        catch (Exception exception)
+        {
+            CommanderFaults.Report("CombatAI.LookForMissileTargets prefix", exception);
             return true;
         }
-
-        __result = targetCount;
-        return false;
     }
 
     /// <summary>
@@ -63,9 +80,16 @@ internal static class CommanderAirCommandPatches
     [HarmonyPrefix]
     private static void NoTargetPrefix(AIPilotCombatModes __instance)
     {
-        if (CommanderAirCommandService.TryGetMissionHoldPoint(__instance, out _))
+        try
         {
-            TimeWithoutTargetField?.SetValue(__instance, 0f);
+            if (CommanderAirCommandService.TryGetMissionHoldPoint(__instance, out _))
+            {
+                TimeWithoutTargetField?.SetValue(__instance, 0f);
+            }
+        }
+        catch (Exception exception)
+        {
+            CommanderFaults.Report("AIPilotCombatModes.NoTarget prefix", exception);
         }
     }
 
@@ -73,52 +97,111 @@ internal static class CommanderAirCommandPatches
     [HarmonyPostfix]
     private static void NoTargetPostfix(AIPilotCombatModes __instance)
     {
-        if (!CommanderAirCommandService.TryGetMissionHoldPoint(__instance, out GlobalPosition point))
+        try
         {
-            return;
-        }
+            if (!CommanderAirCommandService.TryGetMissionHoldPoint(__instance, out GlobalPosition point))
+            {
+                return;
+            }
 
-        DestinationField?.SetValue(__instance, point);
-        TimeWithoutTargetField?.SetValue(__instance, 0f);
+            DestinationField?.SetValue(__instance, point);
+            TimeWithoutTargetField?.SetValue(__instance, 0f);
+        }
+        catch (Exception exception)
+        {
+            CommanderFaults.Report("AIPilotCombatModes.NoTarget postfix", exception);
+        }
     }
 
     [HarmonyPatch(typeof(AIPilotCombatModes), "ManageAltitude")]
     [HarmonyPostfix]
     private static void ManageAltitudePostfix(AIPilotCombatModes __instance)
     {
-        CommanderAirCommandService.ApplyMissionTargetAltitude(__instance, TargetHeightField);
+        try
+        {
+            CommanderAirCommandService.ApplyMissionTargetAltitude(__instance, TargetHeightField);
+        }
+        catch (Exception exception)
+        {
+            CommanderFaults.Report("AIPilotCombatModes.ManageAltitude postfix", exception);
+        }
     }
 
     [HarmonyPatch(typeof(AIPilotCombatModes), "RunAttackMode")]
     [HarmonyPostfix]
     private static void RunAttackModePostfix(AIPilotCombatModes __instance)
     {
-        CommanderAirCommandService.ConstrainMissionDestination(__instance, DestinationField, AttackModeField);
+        try
+        {
+            CommanderAirCommandService.ConstrainMissionDestination(__instance, DestinationField, AttackModeField);
+        }
+        catch (Exception exception)
+        {
+            CommanderFaults.Report("AIPilotCombatModes.RunAttackMode postfix", exception);
+        }
     }
 
     [HarmonyPatch(typeof(FactionHQ), nameof(FactionHQ.RegisterFactionUnit))]
     [HarmonyPostfix]
     private static void RegisterFactionUnitPostfix(FactionHQ __instance, Unit unit)
     {
-        CommanderAirCommandService.NotifyFactionUnitRegistered(__instance, unit);
         // A second postfix on the same method is already established (Supply/CommanderSupplyHeliPatches.cs):
         // the operations pool claim is a third and the air-support claim a fourth, not a new patch class.
-        CommanderOperationsService.NotifyFactionUnitRegistered(__instance, unit);
-        CommanderOperationsService.NotifyAircraftRegistered(__instance, unit);
+        // Each claim is guarded on its own, so one service's fault cannot skip the others' claims.
+        try
+        {
+            CommanderAirCommandService.NotifyFactionUnitRegistered(__instance, unit);
+        }
+        catch (Exception exception)
+        {
+            CommanderFaults.Report("RegisterFactionUnit postfix (air command)", exception);
+        }
+
+        try
+        {
+            CommanderOperationsService.NotifyFactionUnitRegistered(__instance, unit);
+        }
+        catch (Exception exception)
+        {
+            CommanderFaults.Report("RegisterFactionUnit postfix (operations pool)", exception);
+        }
+
+        try
+        {
+            CommanderOperationsService.NotifyAircraftRegistered(__instance, unit);
+        }
+        catch (Exception exception)
+        {
+            CommanderFaults.Report("RegisterFactionUnit postfix (operations air)", exception);
+        }
     }
 
     [HarmonyPatch(typeof(Aircraft), nameof(Aircraft.ReturnToInventory))]
     [HarmonyPostfix]
     private static void ReturnToInventoryPostfix(Aircraft __instance)
     {
-        CommanderAirCommandService.NotifyAircraftReturned(__instance);
+        try
+        {
+            CommanderAirCommandService.NotifyAircraftReturned(__instance);
+        }
+        catch (Exception exception)
+        {
+            CommanderFaults.Report("Aircraft.ReturnToInventory postfix", exception);
+        }
     }
 
     [HarmonyPatch(typeof(Unit), nameof(Unit.DisableUnit))]
     [HarmonyPostfix]
     private static void DisableUnitPostfix(Unit __instance)
     {
-        CommanderAirCommandService.NotifyUnitDisabled(__instance);
+        try
+        {
+            CommanderAirCommandService.NotifyUnitDisabled(__instance);
+        }
+        catch (Exception exception)
+        {
+            CommanderFaults.Report("Unit.DisableUnit postfix", exception);
+        }
     }
 
     /// <summary>
@@ -130,13 +213,21 @@ internal static class CommanderAirCommandPatches
     [HarmonyPrefix]
     private static bool LandingSearchAirbasePrefix(AIPilotLandingState __instance)
     {
-        return !CommanderAirCommandService.TryOverrideLandingAirbase(
-            __instance,
-            StateAircraftField,
-            LandingModeField,
-            LandingAirbaseField,
-            LandingRunwayUsageField,
-            LandingSpeedField);
+        try
+        {
+            return !CommanderAirCommandService.TryOverrideLandingAirbase(
+                __instance,
+                StateAircraftField,
+                LandingModeField,
+                LandingAirbaseField,
+                LandingRunwayUsageField,
+                LandingSpeedField);
+        }
+        catch (Exception exception)
+        {
+            CommanderFaults.Report("AIPilotLandingState.LandingState_SearchAirbase prefix", exception);
+            return true;
+        }
     }
 
     internal static Aircraft? GetStateAircraft(AIPilotCombatModes state)

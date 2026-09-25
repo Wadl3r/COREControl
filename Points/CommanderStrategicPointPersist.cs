@@ -215,7 +215,8 @@ internal sealed partial class CommanderStrategicPointService : ICommanderPersist
                 continue;
             }
 
-            FactionHQ? owner = HqAt(point.Hold.OwnerIndex);
+            FactionHQ? owner = HqAt(point.SavedBaseOwnerIndex);
+            point.SavedBaseOwnerIndex = -1;
             if (owner == null || !owner.IsServer)
             {
                 // Spawning and capture are both server-side; a pure multiplayer client throws.
@@ -390,7 +391,11 @@ internal sealed partial class CommanderStrategicPointService : ICommanderPersist
             Label = point.Label,
             Wooded = point.Wooded,
             AirbaseName = point.Kind == StrategicPointKind.Base ? point.Label : string.Empty,
-            OwnerFaction = FactionNameAt(factionNames, point.Hold.OwnerIndex),
+            // A base's owner is the airbase's own HQ; its hold state is never run and reads neutral,
+            // which is why every captured base used to come back to its mission-authored owner.
+            OwnerFaction = point.Kind == StrategicPointKind.Base
+                ? BaseOwnerName(point)
+                : FactionNameAt(factionNames, point.Hold.OwnerIndex),
             MinePersistentId = point.Mine != null && !point.Mine.disabled ? point.Mine.persistentID.Id : 0u,
         };
     }
@@ -414,14 +419,40 @@ internal sealed partial class CommanderStrategicPointService : ICommanderPersist
         {
             Wooded = record.Wooded,
         };
+        int owner = OwnerIndexByName(factionNames, record.OwnerFaction);
+        if (kind == StrategicPointKind.Base)
+        {
+            point.SavedBaseOwnerIndex = owner;
+            owner = -1;
+        }
+
         point.Hold = new HoldState
         {
-            OwnerIndex = OwnerIndexByName(factionNames, record.OwnerFaction),
+            OwnerIndex = owner,
             CandidateIndex = -1,
             Progress = 0f,
             Contested = false,
         };
         return point;
+    }
+
+    /// <summary>The faction name of the HQ holding a base point's airbase, or empty. Explicit
+    /// null tests rather than <c>?.</c>, which would skip Unity's destroyed-object check.</summary>
+    private static string BaseOwnerName(CommanderStrategicPoint point)
+    {
+        Airbase? airbase = point.Airbase;
+        if (airbase == null)
+        {
+            return string.Empty;
+        }
+
+        FactionHQ? owner = airbase.CurrentHQ;
+        if (owner == null || owner.faction == null)
+        {
+            return string.Empty;
+        }
+
+        return owner.faction.factionName ?? string.Empty;
     }
 
     /// <summary>The faction name at a hold index, or empty for neutral (-1) or an index the
@@ -520,6 +551,20 @@ internal sealed partial class CommanderStrategicPointService : ICommanderPersist
             new CommanderStrategicPoint(StrategicPointKind.Base, new GlobalPosition(0f, 0f, 0f), 900f, "Ridgeline AB"),
             factionNames);
         Expect(failures, "a saved base keeps its airbase name", baseRecord.AirbaseName, "Ridgeline AB");
+
+        CommanderStrategicPoint? restoredBase = FromRecord(
+            new CommanderStrategicPointRecord
+            {
+                Kind = nameof(StrategicPointKind.Base),
+                Label = "Ridgeline AB",
+                AirbaseName = "Ridgeline AB",
+                OwnerFaction = "Boscali",
+            },
+            factionNames);
+        Expect(failures, "a restored base carries its saved owner for the force capture",
+            restoredBase?.SavedBaseOwnerIndex ?? -2, 1);
+        Expect(failures, "a restored base keeps a neutral hold, which income and reach read",
+            restoredBase?.Hold.OwnerIndex ?? -2, -1);
 
         CommanderStrategicPointRecord unknownKind = new() { Kind = "Fortress" };
         Expect(failures, "a point of an unknown kind is dropped", FromRecord(unknownKind, factionNames) == null, true);

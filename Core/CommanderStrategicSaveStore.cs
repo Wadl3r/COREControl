@@ -576,6 +576,13 @@ internal sealed class CommanderStrategicSaveStore : ICommanderTickPersistent, IC
             return;
         }
 
+        // Settled BEFORE anything is applied. The apply below spawns and charges; if any step
+        // threw with the phase still Claimed, the next frame ran the whole rebuild again, and
+        // again every frame after, duplicating buildings and charges each time.
+        claimed = null;
+        phase = StrategicRestorePhase.Done;
+        rebuildAt = -1f;
+
         // Load-only fan-out. Nothing below writes to the world; the ordered apply that follows does,
         // and it has to be ordered because registration order puts operations before economy while
         // the war chest has to be on the table before a garrison can be bought out of it.
@@ -587,23 +594,41 @@ internal sealed class CommanderStrategicSaveStore : ICommanderTickPersistent, IC
         //      holds — which the points restore above has just re-established — and because the
         //      garrison step must see those sites already owned so it does not garrison them;
         //   3. the forward bases and then the garrisons.
+        // Each step is guarded on its own and a failed one does not stop the next: the save is
+        // already consumed, so whatever can still be rebuilt is better than nothing.
         CommanderEconomyService? economy = CommanderEconomyService.Instance;
-        int bases = CommanderStrategicPointService.Instance?.ApplyStrategicBaseOwnership() ?? 0;
-        economy?.ApplyStrategicEconomyBuildings();
-        CommanderOperationsService.Instance?.ApplyStrategicRebuild();
+        int bases = 0;
+        int failedSteps = 0;
+        failedSteps += RunRebuildStep("airbase ownership", () =>
+            bases = CommanderStrategicPointService.Instance?.ApplyStrategicBaseOwnership() ?? 0);
+        failedSteps += RunRebuildStep("economy buildings", () => economy?.ApplyStrategicEconomyBuildings());
+        failedSteps += RunRebuildStep("forward bases and garrisons",
+            () => CommanderOperationsService.Instance?.ApplyStrategicRebuild());
 
         // Re-stamped so the grace is measured from the moment the garrisons were actually placed.
         holdPointsUntil = Time.time + StrategicHoldGraceSeconds;
-        claimed = null;
-        phase = StrategicRestorePhase.Done;
-        rebuildAt = -1f;
 
         CommanderPlugin.Log.LogInfo(
-            $"Strategic load COMPLETE: {bases} airbases handed back, "
+            (failedSteps > 0 ? $"Strategic load finished with {failedSteps} failed step(s): " : "Strategic load COMPLETE: ")
+                + $"{bases} airbases handed back, "
                 + $"{economy?.StrategicEconomyRefund ?? 0f:0} credited back for economy buildings that "
                 + $"could not be rebuilt, {CommanderOperationsService.Instance?.StrategicGarrisonSpend ?? 0f:0} "
                 + "spent on garrisons.");
         StatusText = $"Restored from {snapshot.SavedAtUtc}.";
+    }
+
+    private static int RunRebuildStep(string step, Action apply)
+    {
+        try
+        {
+            apply();
+            return 0;
+        }
+        catch (Exception exception)
+        {
+            CommanderPlugin.Log.LogError($"Strategic load: rebuilding {step} failed and was skipped: {exception}");
+            return 1;
+        }
     }
 
     private static void ConsumeSaveFile(string path, string missionName)

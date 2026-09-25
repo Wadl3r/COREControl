@@ -8,9 +8,16 @@ internal static class CommanderMoveDestinationPatch
 {
     private static void Postfix(UnitCommand __instance, GlobalPosition waypoint, Player player)
     {
-        if (CommanderPlugin.Instance?.IsCommanderModeActive == true)
+        try
         {
-            CommanderMoveService.NotifyPlayerDestination(__instance, waypoint, player);
+            if (CommanderPlugin.Instance?.IsCommanderModeActive == true)
+            {
+                CommanderMoveService.NotifyPlayerDestination(__instance, waypoint, player);
+            }
+        }
+        catch (System.Exception exception)
+        {
+            CommanderFaults.Report("UnitCommand.ServerSetDestination postfix", exception);
         }
     }
 }
@@ -31,16 +38,23 @@ internal static class CommanderFocusFirePatch
 
     private static void Postfix(Turret __instance, Unit targetCandidate, ref float priorityThreshold)
     {
-        if (CommanderMoveService.Instance?.HasAttackOrders != true
-            || !ReferenceEquals(TurretTarget(__instance), targetCandidate)
-            || !CommanderMoveService.IsOrderedTarget(TurretAttachedUnit(__instance), targetCandidate))
+        try
         {
-            return;
-        }
+            if (CommanderMoveService.Instance?.HasAttackOrders != true
+                || !ReferenceEquals(TurretTarget(__instance), targetCandidate)
+                || !CommanderMoveService.IsOrderedTarget(TurretAttachedUnit(__instance), targetCandidate))
+            {
+                return;
+            }
 
-        // The candidate was just accepted by the Basegame scoring; lock it in so no later
-        // candidate in this scan outbids the commanded target.
-        priorityThreshold = ForcedPriority;
+            // The candidate was just accepted by the Basegame scoring; lock it in so no later
+            // candidate in this scan outbids the commanded target.
+            priorityThreshold = ForcedPriority;
+        }
+        catch (System.Exception exception)
+        {
+            CommanderFaults.Report("Turret.AssessTargetPriority postfix (focus fire)", exception);
+        }
     }
 }
 
@@ -57,7 +71,15 @@ internal static class CommanderHoldFirePatch
 
     private static bool Prefix(Turret __instance)
     {
-        return CommanderMoveService.Instance?.HasHoldFireUnits != true
-            || !CommanderMoveService.IsHoldingFire(TurretAttachedUnit(__instance));
+        try
+        {
+            return CommanderMoveService.Instance?.HasHoldFireUnits != true
+                || !CommanderMoveService.IsHoldingFire(TurretAttachedUnit(__instance));
+        }
+        catch (System.Exception exception)
+        {
+            CommanderFaults.Report("Turret.AssessTargetPriority prefix (hold fire)", exception);
+            return true;
+        }
     }
 }

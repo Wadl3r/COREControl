@@ -136,6 +136,12 @@ internal sealed class CommanderStrategicPoint
     /// other control point since 2026-09-14.</summary>
     internal HoldState Hold;
 
+    /// <summary>For a base read back from a strategic save: the hold index of the faction that held
+    /// it when the save was taken, or -1. Kept apart from <see cref="Hold"/>, which must stay
+    /// neutral for a base because income and build reach read it; consumed and cleared by
+    /// <c>ApplyStrategicBaseOwnership</c>.</summary>
+    internal int SavedBaseOwnerIndex = -1;
+
     /// <summary>
     /// True when this point's own footprint is woodland or ground no helicopter will land on, so a
     /// picket here has to be parachuted in or driven (user report 2026-09-14: "air insertion of

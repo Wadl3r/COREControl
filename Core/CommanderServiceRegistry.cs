@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 namespace GroundControlRts;
@@ -80,7 +81,7 @@ internal sealed class CommanderServiceRegistry
             {
                 continue;
             }
-            entry.Service.Activate();
+            Guard(entry.Service, nameof(ICommanderActivate.Activate), s => s.Activate());
         }
     }
 
@@ -92,7 +93,7 @@ internal sealed class CommanderServiceRegistry
             Gated<ICommanderActivate> entry = activate[i];
             if (entry.Advanced)
             {
-                entry.Service.Activate();
+                Guard(entry.Service, nameof(ICommanderActivate.Activate), s => s.Activate());
             }
         }
     }
@@ -102,7 +103,7 @@ internal sealed class CommanderServiceRegistry
     {
         for (int i = 0; i < deactivate.Count; i++)
         {
-            deactivate[i].Deactivate();
+            Guard(deactivate[i], nameof(ICommanderDeactivate.Deactivate), s => s.Deactivate());
         }
     }
 
@@ -115,7 +116,7 @@ internal sealed class CommanderServiceRegistry
             {
                 continue;
             }
-            entry.Service.TickActive();
+            Guard(entry.Service, nameof(ICommanderTickActive.TickActive), s => s.TickActive());
         }
     }
 
@@ -128,7 +129,7 @@ internal sealed class CommanderServiceRegistry
             {
                 continue;
             }
-            entry.Service.TickPersistent();
+            Guard(entry.Service, nameof(ICommanderTickPersistent.TickPersistent), s => s.TickPersistent());
         }
     }
 
@@ -136,7 +137,7 @@ internal sealed class CommanderServiceRegistry
     {
         for (int i = 0; i < resetSession.Count; i++)
         {
-            resetSession[i].ResetSession();
+            Guard(resetSession[i], nameof(ICommanderResetSession.ResetSession), s => s.ResetSession());
         }
     }
 
@@ -147,7 +148,7 @@ internal sealed class CommanderServiceRegistry
     {
         for (int i = 0; i < persistState.Count; i++)
         {
-            persistState[i].Snapshot(w);
+            Guard(persistState[i], nameof(ICommanderPersistState.Snapshot), s => s.Snapshot(w));
         }
     }
 
@@ -158,7 +159,7 @@ internal sealed class CommanderServiceRegistry
     {
         for (int i = 0; i < persistState.Count; i++)
         {
-            persistState[i].Restore(r);
+            Guard(persistState[i], nameof(ICommanderPersistState.Restore), s => s.Restore(r));
         }
     }
 
@@ -168,7 +169,7 @@ internal sealed class CommanderServiceRegistry
     {
         for (int i = 0; i < persistStrategic.Count; i++)
         {
-            persistStrategic[i].SnapshotStrategic(w);
+            Guard(persistStrategic[i], nameof(ICommanderPersistStrategic.SnapshotStrategic), s => s.SnapshotStrategic(w));
         }
     }
 
@@ -180,7 +181,26 @@ internal sealed class CommanderServiceRegistry
     {
         for (int i = 0; i < persistStrategic.Count; i++)
         {
-            persistStrategic[i].RestoreStrategic(r);
+            Guard(persistStrategic[i], nameof(ICommanderPersistStrategic.RestoreStrategic), s => s.RestoreStrategic(r));
+        }
+    }
+
+    /// <summary>
+    /// Runs one service's hook and contains its exception, so a fault in one service cannot stop
+    /// the services registered after it, or skip the session reset that follows a deactivate.
+    /// The lambdas passed in capture at most the phase's writer or reader; the per-frame ticks
+    /// capture nothing, so the compiler caches them and nothing is allocated per call.
+    /// </summary>
+    private static void Guard<T>(T service, string phase, Action<T> hook)
+        where T : class
+    {
+        try
+        {
+            hook(service);
+        }
+        catch (Exception exception)
+        {
+            CommanderFaults.Report($"{service.GetType().Name}.{phase}", exception);
         }
     }
 

@@ -32,24 +32,32 @@ internal static class CommanderTacticalMapControlsPatch
 
     private static bool Prefix(DynamicMap __instance)
     {
-        if (CommanderPlugin.Instance?.IsCommanderModeActive != true)
+        try
         {
+            if (CommanderPlugin.Instance?.IsCommanderModeActive != true)
+            {
+                return true;
+            }
+
+            if (CommanderOverlayUi.Instance?.ContainsScreenPoint(Input.mousePosition) != true
+                && __instance.IsCursorInMapRectangle())
+            {
+                CommanderMapControls(__instance);
+            }
+            else
+            {
+                // Dragging off the map and back must not arrive as one huge jump.
+                dragTracking = false;
+            }
+
+            UpdateCameraTracking(__instance);
+            return false;
+        }
+        catch (System.Exception exception)
+        {
+            CommanderFaults.Report("DynamicMap.MapControls prefix", exception);
             return true;
         }
-
-        if (CommanderOverlayUi.Instance?.ContainsScreenPoint(Input.mousePosition) != true
-            && __instance.IsCursorInMapRectangle())
-        {
-            CommanderMapControls(__instance);
-        }
-        else
-        {
-            // Dragging off the map and back must not arrive as one huge jump.
-            dragTracking = false;
-        }
-
-        UpdateCameraTracking(__instance);
-        return false;
     }
 
     private static void CommanderMapControls(DynamicMap map)
@@ -265,8 +273,16 @@ internal static class CommanderDisableBaseMapJumpPatch
 {
     private static bool Prefix()
     {
-        return CommanderPlugin.Instance?.IsCommanderModeActive != true
-            || CommanderTacticalMapService.AllowCommanderMapJump;
+        try
+        {
+            return CommanderPlugin.Instance?.IsCommanderModeActive != true
+                || CommanderTacticalMapService.AllowCommanderMapJump;
+        }
+        catch (System.Exception exception)
+        {
+            CommanderFaults.Report("DynamicMap.JumpCameraTo prefix", exception);
+            return true;
+        }
     }
 }
 
@@ -275,27 +291,35 @@ internal static class CommanderKeepTacticalMapOpenPatch
 {
     private static bool Prefix()
     {
-        if (CommanderPlugin.Instance?.IsCommanderModeActive != true)
+        try
         {
+            if (CommanderPlugin.Instance?.IsCommanderModeActive != true)
+            {
+                return true;
+            }
+
+            if (CommanderTacticalMapService.Instance?.SuppressExtraUiThisFrame == true)
+            {
+                return false;
+            }
+
+            if (!CommanderGameInput.MapDown)
+            {
+                return true;
+            }
+
+            if (CommanderAirCommandUi.Instance?.HandleMapKey() == true)
+            {
+                return false;
+            }
+
+            return CommanderTacticalMapService.Instance?.HandleMapKey() != true;
+        }
+        catch (System.Exception exception)
+        {
+            CommanderFaults.Report("ExtraUiInput.Update prefix", exception);
             return true;
         }
-
-        if (CommanderTacticalMapService.Instance?.SuppressExtraUiThisFrame == true)
-        {
-            return false;
-        }
-
-        if (!CommanderGameInput.MapDown)
-        {
-            return true;
-        }
-
-        if (CommanderAirCommandUi.Instance?.HandleMapKey() == true)
-        {
-            return false;
-        }
-
-        return CommanderTacticalMapService.Instance?.HandleMapKey() != true;
     }
 }
 
@@ -304,11 +328,18 @@ internal static class CommanderTacticalMapIconScalePatch
 {
     private static void Postfix(UnitMapIcon __instance)
     {
-        if (CommanderPlugin.Instance?.IsCommanderModeActive == true
-            && CommanderTacticalMapService.Instance?.IsOpen == true
-            && __instance.iconImage != null)
+        try
         {
-            __instance.iconImage.transform.localScale *= 1.4f;
+            if (CommanderPlugin.Instance?.IsCommanderModeActive == true
+                && CommanderTacticalMapService.Instance?.IsOpen == true
+                && __instance.iconImage != null)
+            {
+                __instance.iconImage.transform.localScale *= 1.4f;
+            }
+        }
+        catch (System.Exception exception)
+        {
+            CommanderFaults.Report("UnitMapIcon.UpdateIcon postfix", exception);
         }
     }
 }
@@ -324,8 +355,16 @@ internal static class CommanderUnitMapClickPatch
 {
     private static bool Prefix()
     {
-        return CommanderPlugin.Instance?.IsCommanderModeActive != true
-            || !CommanderTacticalMapControlsPatch.AnyPlacementArmed();
+        try
+        {
+            return CommanderPlugin.Instance?.IsCommanderModeActive != true
+                || !CommanderTacticalMapControlsPatch.AnyPlacementArmed();
+        }
+        catch (System.Exception exception)
+        {
+            CommanderFaults.Report("UnitMapIcon.ClickIcon prefix", exception);
+            return true;
+        }
     }
 }
 
@@ -334,29 +373,37 @@ internal static class CommanderAirbaseMapClickPatch
 {
     private static bool Prefix(AirbaseMapIcon __instance)
     {
-        if (CommanderPlugin.Instance?.IsCommanderModeActive != true)
+        try
         {
+            if (CommanderPlugin.Instance?.IsCommanderModeActive != true)
+            {
+                return true;
+            }
+
+            // An armed placement owns the click; see CommanderUnitMapClickPatch. The one exception is
+            // Air Command picking its departure base, which is a placement step in its own right.
+            if (CommanderTacticalMapControlsPatch.AnyPlacementArmed()
+                && CommanderAirCommandService.Instance?.IsUiVisible != true)
+            {
+                return false;
+            }
+
+            CommanderAirCommandService? airCommand = CommanderAirCommandService.Instance;
+            if (airCommand?.IsUiVisible == true)
+            {
+                airCommand.TrySelectAirbaseFromMap(__instance.airbase);
+                return false;
+            }
+
+            // The compact Tactical Map is for command interaction and should never open
+            // the Basegame aircraft-selection panel.
+            return CommanderTacticalMapService.Instance?.IsOpen != true;
+        }
+        catch (System.Exception exception)
+        {
+            CommanderFaults.Report("AirbaseMapIcon.ClickIcon prefix", exception);
             return true;
         }
-
-        // An armed placement owns the click; see CommanderUnitMapClickPatch. The one exception is
-        // Air Command picking its departure base, which is a placement step in its own right.
-        if (CommanderTacticalMapControlsPatch.AnyPlacementArmed()
-            && CommanderAirCommandService.Instance?.IsUiVisible != true)
-        {
-            return false;
-        }
-
-        CommanderAirCommandService? airCommand = CommanderAirCommandService.Instance;
-        if (airCommand?.IsUiVisible == true)
-        {
-            airCommand.TrySelectAirbaseFromMap(__instance.airbase);
-            return false;
-        }
-
-        // The compact Tactical Map is for command interaction and should never open
-        // the Basegame aircraft-selection panel.
-        return CommanderTacticalMapService.Instance?.IsOpen != true;
     }
 }
 
@@ -365,18 +412,25 @@ internal static class CommanderAirCommandAirbaseIconPatch
 {
     private static void Postfix(AirbaseMapIcon __instance)
     {
-        CommanderAirCommandService? airCommand = CommanderAirCommandService.Instance;
-        if (CommanderPlugin.Instance?.IsCommanderModeActive != true
-            || airCommand?.IsUiVisible != true)
+        try
         {
-            return;
-        }
+            CommanderAirCommandService? airCommand = CommanderAirCommandService.Instance;
+            if (CommanderPlugin.Instance?.IsCommanderModeActive != true
+                || airCommand?.IsUiVisible != true)
+            {
+                return;
+            }
 
-        bool selectable = airCommand.IsSelectableAirbase(__instance.airbase);
-        __instance.gameObject.SetActive(DynamicMap.mapMaximized && selectable);
-        if (selectable && __instance.iconImage != null && airCommand.IsSelectedAirbase(__instance.airbase))
+            bool selectable = airCommand.IsSelectableAirbase(__instance.airbase);
+            __instance.gameObject.SetActive(DynamicMap.mapMaximized && selectable);
+            if (selectable && __instance.iconImage != null && airCommand.IsSelectedAirbase(__instance.airbase))
+            {
+                __instance.iconImage.color = GameAssets.i.HUDFriendlySelected;
+            }
+        }
+        catch (System.Exception exception)
         {
-            __instance.iconImage.color = GameAssets.i.HUDFriendlySelected;
+            CommanderFaults.Report("AirbaseMapIcon.UpdateIcon postfix", exception);
         }
     }
 }

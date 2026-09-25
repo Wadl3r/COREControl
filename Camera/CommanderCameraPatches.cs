@@ -10,17 +10,25 @@ internal static class CommanderCameraFollowingPatch
 {
     private static bool Prefix(Unit unit)
     {
-        if (CommanderPlugin.Instance?.IsCommanderModeActive != true || !DynamicMap.mapMaximized)
+        try
         {
+            if (CommanderPlugin.Instance?.IsCommanderModeActive != true || !DynamicMap.mapMaximized)
+            {
+                return true;
+            }
+
+            if (CommanderTacticalMapService.Instance?.SuppressMapFollow == true)
+            {
+                return false;
+            }
+
+            return !CommanderGameAccess.ShouldAllowCommanderSelection(unit, CommanderGameAccess.GetLocalHq());
+        }
+        catch (System.Exception exception)
+        {
+            CommanderFaults.Report("CameraStateManager.SetFollowingUnit prefix", exception);
             return true;
         }
-
-        if (CommanderTacticalMapService.Instance?.SuppressMapFollow == true)
-        {
-            return false;
-        }
-
-        return !CommanderGameAccess.ShouldAllowCommanderSelection(unit, CommanderGameAccess.GetLocalHq());
     }
 }
 
@@ -29,23 +37,37 @@ internal static class CommanderFollowSonicBoomPatch
 {
     private static void Prefix(ref Vector3 __state)
     {
-        CameraStateManager? camera = SceneSingleton<CameraStateManager>.i;
-        __state = camera != null ? camera.cameraVelocity : Vector3.zero;
-        Aircraft? followed = CommanderCameraFollowService.Instance?.FollowedAircraft;
-        if (camera != null && followed?.rb != null)
+        try
         {
-            // SonicBoomManager only needs the listener velocity during this call.
-            // Restoring it immediately avoids feeding aircraft speed into FreeCam.
-            camera.cameraVelocity = followed.rb.velocity;
+            CameraStateManager? camera = SceneSingleton<CameraStateManager>.i;
+            __state = camera != null ? camera.cameraVelocity : Vector3.zero;
+            Aircraft? followed = CommanderCameraFollowService.Instance?.FollowedAircraft;
+            if (camera != null && followed?.rb != null)
+            {
+                // SonicBoomManager only needs the listener velocity during this call.
+                // Restoring it immediately avoids feeding aircraft speed into FreeCam.
+                camera.cameraVelocity = followed.rb.velocity;
+            }
+        }
+        catch (System.Exception exception)
+        {
+            CommanderFaults.Report("SonicBoomManager.ManageSonicBooms prefix", exception);
         }
     }
 
     private static void Postfix(Vector3 __state)
     {
-        CameraStateManager? camera = SceneSingleton<CameraStateManager>.i;
-        if (camera != null)
+        try
         {
-            camera.cameraVelocity = __state;
+            CameraStateManager? camera = SceneSingleton<CameraStateManager>.i;
+            if (camera != null)
+            {
+                camera.cameraVelocity = __state;
+            }
+        }
+        catch (System.Exception exception)
+        {
+            CommanderFaults.Report("SonicBoomManager.ManageSonicBooms postfix", exception);
         }
     }
 }
@@ -89,6 +111,26 @@ internal static class CommanderFreeCameraInputPatch
     private static void Prefix(CameraFreeState __instance, CameraStateManager cam, out CameraInputState __state)
     {
         __state = default;
+        try
+        {
+            ApplyCommanderInput(__instance, cam, ref __state);
+        }
+        catch (System.Exception exception)
+        {
+            CommanderFaults.Report("CameraFreeState.UpdateState prefix", exception);
+            // Put the game's input switch back and skip the postfix's restore: the state is only
+            // partly captured, and restoring from it would snap the camera to a zero rotation.
+            if (__state.Active)
+            {
+                cam.allowInputs = __state.AllowInputs;
+            }
+
+            __state.Active = false;
+        }
+    }
+
+    private static void ApplyCommanderInput(CameraFreeState __instance, CameraStateManager cam, ref CameraInputState __state)
+    {
         PlayerMovedCameraThisFrame = false;
         if (!CommanderCameraController.CustomInputActive)
         {
@@ -366,6 +408,22 @@ internal static class CommanderFreeCameraInputPatch
     }
 
     private static void Postfix(CameraFreeState __instance, CameraStateManager cam, CameraInputState __state)
+    {
+        try
+        {
+            RestoreAfterUpdate(__instance, cam, __state);
+        }
+        catch (System.Exception exception)
+        {
+            CommanderFaults.Report("CameraFreeState.UpdateState postfix", exception);
+            if (__state.Active)
+            {
+                cam.allowInputs = __state.AllowInputs;
+            }
+        }
+    }
+
+    private static void RestoreAfterUpdate(CameraFreeState __instance, CameraStateManager cam, CameraInputState __state)
     {
         if (!__state.Active)
         {

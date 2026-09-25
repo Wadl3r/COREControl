@@ -67,8 +67,11 @@ One folder per subsystem. Large services are split into partial classes by conce
   `Get<T>(section, key, default)` / `Set`, plus a `_ = Property;` line in `Initialize` so the entry is
   written to the config file on first run. The settings window is `UI/CommanderOverlayUiSettings.cs`.
 - **Game internals.** `Core/CommanderGameAccess.cs` wraps most of them. Harmony patches live in
-  `*Patches.cs` next to the service they serve; `harmony.PatchAll()` in `CommanderPlugin.Awake`
-  applies them all.
+  `*Patches.cs` next to the service they serve; `CommanderPlugin.PatchEachClass` applies them one
+  class at a time. Every patch body catches its own exceptions and reports them through
+  `CommanderFaults.Report`, which logs the first one with a stack trace and then a count every 30 s,
+  so a fault never breaks the game method it runs in. The service registry guards each service's
+  hooks the same way.
 - **AI commanders.** Review loops iterate `FactionRegistry.GetAllHQs()` and ask
   `CommanderPlayerCommanderService.IsCommanded(hq, localHq)`: hostile factions follow the enemy
   commander setting, the player's own faction follows the player commander switch.
@@ -81,9 +84,10 @@ One folder per subsystem. Large services are split into partial classes by conce
 
 - **String-named game members are not compile-checked.** 26 Harmony targets are given as
   `[HarmonyPatch(typeof(X), "name")]`, and about 75 private members are reached through
-  `AccessTools` or `GetField` by name. After a game update, a missing Harmony target throws out of
-  `PatchAll` before the mode controller exists, which leaves the mod dead. A missing field makes its
-  lookup null, or throws from the type initializer for `FieldRefAccess`. Check them against
+  `AccessTools` or `GetField` by name. After a game update, a patch class whose target is missing
+  is skipped and logged as `Harmony patch class ... could not be applied`, and the load line then
+  says how many were skipped. A missing field makes its lookup null, or throws from the type
+  initializer for `FieldRefAccess`. Check them against
   `NuclearOption_Data\Managed\Assembly-CSharp.dll` whenever the game updates.
 - **Server authority.** `FactionHQ.AddSupplyUnit` and `Spawner.SpawnUnit` are Mirage `[Server]`
   methods and throw on a pure multiplayer client. `FactionHQ.AddFunds` and `ModifyUnitSupply` do not
@@ -96,7 +100,9 @@ One folder per subsystem. Large services are split into partial classes by conce
 ## Testing
 
 - There is no test project. 23 subsystem `SelfCheck()` methods and `CommanderServiceRegistryCheck.Run()`
-  run from `CommanderPlugin.Awake` and log `... self-check FAILED ...` as errors.
+  run from `CommanderPlugin.Awake` and log `... self-check FAILED ...` as errors. A check that throws
+  logs `... threw during load and was skipped` and the load carries on.
+- Runtime faults caught at a patch or service boundary log `<site> threw and was skipped`.
 - In-game check: install, launch Nuclear Option, host `CORE Control Duel`, then read
   `D:\Steam\steamapps\common\Nuclear Option\BepInEx\LogOutput.log`. A clean load logs
   `CORE Control 0.7.6.0 loaded`, and on first run one `Installed mission '...'` line per shipped mission.

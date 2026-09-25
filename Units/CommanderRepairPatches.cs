@@ -15,64 +15,72 @@ internal static class CommanderRepairPatches
     [HarmonyPrefix]
     private static bool SearchForRepairPrefix(Repairer __instance)
     {
-        Unit? repairerUnit = AttachedUnitField?.GetValue(__instance) as Unit;
-        if (CommanderSamSiteService.IsReservedConstructionJacknife(repairerUnit))
+        try
         {
-            UnitToRepairField?.SetValue(__instance, null);
-            RepairInProgressField?.SetValue(__instance, null);
+            Unit? repairerUnit = AttachedUnitField?.GetValue(__instance) as Unit;
+            if (CommanderSamSiteService.IsReservedConstructionJacknife(repairerUnit))
+            {
+                UnitToRepairField?.SetValue(__instance, null);
+                RepairInProgressField?.SetValue(__instance, null);
+                return false;
+            }
+
+            // A crew the commander paid for goes to the building it was paid for, ahead of both the
+            // nearest-target override and the Basegame priority scoring. That is the whole product.
+            CommanderRepairService? repairService = CommanderRepairService.Instance;
+            Unit? assignedTarget = null;
+            if (repairService != null && repairService.TryGetAssignedTarget(repairerUnit, out Unit paidTarget))
+            {
+                assignedTarget = paidTarget;
+            }
+
+            if (repairerUnit == null
+                || (assignedTarget == null && repairService?.ShouldUseNearestTarget(repairerUnit) != true)
+                || LastRepairCheckField == null
+                || UnitToRepairField == null
+                || RepairInProgressField == null)
+            {
+                return true;
+            }
+
+            IRepairable? activeRepair = RepairInProgressField.GetValue(__instance) as IRepairable;
+            if (activeRepair != null && activeRepair.NeedsRepair())
+            {
+                return false;
+            }
+            if (activeRepair != null)
+            {
+                RepairInProgressField.SetValue(__instance, null);
+                UnitToRepairField.SetValue(__instance, null);
+            }
+
+            float lastCheck = (float)LastRepairCheckField.GetValue(__instance);
+            if (Time.timeSinceLevelLoad - lastCheck < 30f)
+            {
+                return false;
+            }
+            LastRepairCheckField.SetValue(__instance, Time.timeSinceLevelLoad);
+
+            Unit? previous = UnitToRepairField.GetValue(__instance) as Unit;
+            Unit? nearest = assignedTarget ?? FindNearestRepairTarget(repairerUnit);
+            UnitToRepairField.SetValue(__instance, nearest);
+            if (nearest != null && !ReferenceEquals(previous, nearest) && repairerUnit is ICommandable commandable)
+            {
+                Vector3 direction = nearest.GlobalPosition() - repairerUnit.GlobalPosition();
+                direction.y = 0f;
+                if (direction.sqrMagnitude > 0.01f)
+                {
+                    GlobalPosition waypoint = nearest.startPosition - nearest.maxRadius * 2f * direction.normalized;
+                    commandable.UnitCommand?.SetDestination(waypoint, playerCommand: false);
+                }
+            }
             return false;
         }
-
-        // A crew the commander paid for goes to the building it was paid for, ahead of both the
-        // nearest-target override and the Basegame priority scoring. That is the whole product.
-        CommanderRepairService? repairService = CommanderRepairService.Instance;
-        Unit? assignedTarget = null;
-        if (repairService != null && repairService.TryGetAssignedTarget(repairerUnit, out Unit paidTarget))
+        catch (System.Exception exception)
         {
-            assignedTarget = paidTarget;
-        }
-
-        if (repairerUnit == null
-            || (assignedTarget == null && repairService?.ShouldUseNearestTarget(repairerUnit) != true)
-            || LastRepairCheckField == null
-            || UnitToRepairField == null
-            || RepairInProgressField == null)
-        {
+            CommanderFaults.Report("Repairer.SearchForRepair prefix", exception);
             return true;
         }
-
-        IRepairable? activeRepair = RepairInProgressField.GetValue(__instance) as IRepairable;
-        if (activeRepair != null && activeRepair.NeedsRepair())
-        {
-            return false;
-        }
-        if (activeRepair != null)
-        {
-            RepairInProgressField.SetValue(__instance, null);
-            UnitToRepairField.SetValue(__instance, null);
-        }
-
-        float lastCheck = (float)LastRepairCheckField.GetValue(__instance);
-        if (Time.timeSinceLevelLoad - lastCheck < 30f)
-        {
-            return false;
-        }
-        LastRepairCheckField.SetValue(__instance, Time.timeSinceLevelLoad);
-
-        Unit? previous = UnitToRepairField.GetValue(__instance) as Unit;
-        Unit? nearest = assignedTarget ?? FindNearestRepairTarget(repairerUnit);
-        UnitToRepairField.SetValue(__instance, nearest);
-        if (nearest != null && !ReferenceEquals(previous, nearest) && repairerUnit is ICommandable commandable)
-        {
-            Vector3 direction = nearest.GlobalPosition() - repairerUnit.GlobalPosition();
-            direction.y = 0f;
-            if (direction.sqrMagnitude > 0.01f)
-            {
-                GlobalPosition waypoint = nearest.startPosition - nearest.maxRadius * 2f * direction.normalized;
-                commandable.UnitCommand?.SetDestination(waypoint, playerCommand: false);
-            }
-        }
-        return false;
     }
 
     internal static void RequestImmediateSearch(Repairer repairer)

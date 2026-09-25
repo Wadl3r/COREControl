@@ -381,11 +381,20 @@ internal sealed class CommanderModeController : MonoBehaviour
 
     private void OnActiveSceneChanged(Scene previousScene, Scene newScene)
     {
-        Deactivate(restorePreviousCamera: false);
-        // Deactivate() is a no-op when the mode was never entered, so these two still have to
-        // be nudged by hand: a stale camera follow or drag would otherwise survive the load.
-        cameraFollowService?.Deactivate();
-        boxSelectService?.Cancel();
+        try
+        {
+            Deactivate(restorePreviousCamera: false);
+            // Deactivate() is a no-op when the mode was never entered, so these two still have to
+            // be nudged by hand: a stale camera follow or drag would otherwise survive the load.
+            cameraFollowService?.Deactivate();
+            boxSelectService?.Cancel();
+        }
+        catch (System.Exception exception)
+        {
+            // The reset below must still run, or the last mission's units and clocks carry over.
+            CommanderFaults.Report("Scene change teardown", exception);
+        }
+
         CommanderFeatureGate.ResetSession();
         services.ResetSession();
         aircraftSelectionMenuPresent = false;

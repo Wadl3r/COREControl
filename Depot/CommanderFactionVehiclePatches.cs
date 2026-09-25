@@ -32,20 +32,35 @@ internal static class CommanderFactionVehiclePatches
     [HarmonyPrefix]
     private static bool TrySpawnVehiclePrefix(VehicleDepot __instance, VehicleDefinition vehicleDefinition, ref bool __result)
     {
-        CommanderFactionVehicleService? service = CommanderFactionVehicleService.Instance;
-        if (service == null || !service.ShouldBlockAutomaticDeployment(__instance, vehicleDefinition))
+        try
         {
+            CommanderFactionVehicleService? service = CommanderFactionVehicleService.Instance;
+            if (service == null || !service.ShouldBlockAutomaticDeployment(__instance, vehicleDefinition))
+            {
+                return true;
+            }
+
+            __result = false;
+            return false;
+        }
+        catch (System.Exception exception)
+        {
+            CommanderFaults.Report("VehicleDepot.TrySpawnVehicle prefix", exception);
             return true;
         }
-
-        __result = false;
-        return false;
     }
 
     [HarmonyPatch(typeof(Factory), "set_NetworkproductionUnit")]
     [HarmonyPostfix]
     private static void ProductionUnitChangedPostfix(Factory __instance)
     {
-        CommanderSpawnService.NotifyFactoryChanged(__instance);
+        try
+        {
+            CommanderSpawnService.NotifyFactoryChanged(__instance);
+        }
+        catch (System.Exception exception)
+        {
+            CommanderFaults.Report("Factory.set_NetworkproductionUnit postfix", exception);
+        }
     }
 }

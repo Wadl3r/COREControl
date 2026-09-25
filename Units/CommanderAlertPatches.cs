@@ -18,17 +18,31 @@ internal static class CommanderAlertPatches
     [HarmonyPostfix]
     private static void RecordDamagePostfix(Unit __instance, PersistentID lastDamagedBy)
     {
-        CommanderAlertService.Instance?.NotifyDamage(__instance, lastDamagedBy);
-        // Same hook, other side of the board: a hostile commander that is being shot at goes to
-        // its defence posture even when nothing of its own ever saw the shooter.
-        CommanderEnemyCommanderService.Instance?.NotifyUnitDamaged(__instance);
+        try
+        {
+            CommanderAlertService.Instance?.NotifyDamage(__instance, lastDamagedBy);
+            // Same hook, other side of the board: a hostile commander that is being shot at goes to
+            // its defence posture even when nothing of its own ever saw the shooter.
+            CommanderEnemyCommanderService.Instance?.NotifyUnitDamaged(__instance);
+        }
+        catch (System.Exception exception)
+        {
+            CommanderFaults.Report("Unit.RecordDamage postfix", exception);
+        }
     }
 
     [HarmonyPatch(typeof(Unit), nameof(Unit.ReportKilled))]
     [HarmonyPostfix]
     private static void ReportKilledPostfix(Unit __instance)
     {
-        CommanderAlertService.Instance?.NotifyKilled(__instance);
+        try
+        {
+            CommanderAlertService.Instance?.NotifyKilled(__instance);
+        }
+        catch (System.Exception exception)
+        {
+            CommanderFaults.Report("Unit.ReportKilled postfix", exception);
+        }
     }
 
     /// <summary>
@@ -41,21 +55,36 @@ internal static class CommanderAlertPatches
     [HarmonyPrefix]
     private static void CaptureFactionPrefix(Airbase __instance, out FactionHQ? __state)
     {
-        __state = __instance.CurrentHQ;
+        __state = default;
+        try
+        {
+            __state = __instance.CurrentHQ;
+        }
+        catch (System.Exception exception)
+        {
+            CommanderFaults.Report("Airbase.CaptureFaction prefix", exception);
+        }
     }
 
     [HarmonyPatch(typeof(Airbase), "CaptureFaction")]
     [HarmonyPostfix]
     private static void CaptureFactionPostfix(Airbase __instance, FactionHQ? __state)
     {
-        // Missions hand their airbases to their factions during load, and every one of those is a
-        // "capture" as far as this method is concerned. Same ten-second grace the arrival alerts use.
-        if (ReferenceEquals(__state, __instance.CurrentHQ) || UnityEngine.Time.timeSinceLevelLoad < 10f)
+        try
         {
-            return;
-        }
+            // Missions hand their airbases to their factions during load, and every one of those is a
+            // "capture" as far as this method is concerned. Same ten-second grace the arrival alerts use.
+            if (ReferenceEquals(__state, __instance.CurrentHQ) || UnityEngine.Time.timeSinceLevelLoad < 10f)
+            {
+                return;
+            }
 
-        CommanderAlertService.Instance?.NotifyCapture(CaptureText(__instance, __state));
+            CommanderAlertService.Instance?.NotifyCapture(CaptureText(__instance, __state));
+        }
+        catch (System.Exception exception)
+        {
+            CommanderFaults.Report("Airbase.CaptureFaction postfix", exception);
+        }
     }
 
     private static string CaptureText(Airbase airbase, FactionHQ? previous)

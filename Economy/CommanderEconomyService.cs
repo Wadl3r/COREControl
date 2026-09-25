@@ -655,6 +655,14 @@ internal sealed partial class CommanderEconomyService
             return;
         }
 
+        // A factory built while the switch is off would never produce (the ProduceUnit prefix
+        // skips it), so the purchase is refused rather than charged for nothing.
+        if (kind == CommanderBuildKind.Factory && !CommanderSettings.FactoriesEnabled)
+        {
+            StatusText = "Factories are switched off in settings (Economy / FactoriesEnabled).";
+            return;
+        }
+
         if (kind == CommanderBuildKind.Factory && SelectedProduction == null)
         {
             StatusText = "This faction has no ground unit a factory could produce.";
@@ -866,6 +874,12 @@ internal sealed partial class CommanderEconomyService
         int level = GetFactoryLevel(factory);
         if (attached == null || level >= MaxLevel)
         {
+            return;
+        }
+
+        if (!CommanderSettings.FactoriesEnabled)
+        {
+            StatusText = "Factories are switched off in settings (Economy / FactoriesEnabled).";
             return;
         }
 

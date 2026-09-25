@@ -109,6 +109,14 @@ internal static class CommanderDirectPathPatch
 {
     private static bool Prefix(PathfindingAgent __instance, GlobalPosition targetPos)
     {
-        return !CommanderDirectPathService.TryApplyShortcut(__instance, targetPos);
+        try
+        {
+            return !CommanderDirectPathService.TryApplyShortcut(__instance, targetPos);
+        }
+        catch (System.Exception exception)
+        {
+            CommanderFaults.Report("PathfindingAgent.Pathfind prefix", exception);
+            return true;
+        }
     }
 }
