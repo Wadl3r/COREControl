@@ -161,7 +161,8 @@ internal sealed partial class CommanderOperationsService
     /// platoon on a base goes only when nothing else will serve.
     /// </para>
     /// </summary>
-    private int CallUpQuietForwardBases(FactionHQ hq, OperationsState state, int wanted, string? label)
+    private int CallUpQuietForwardBases(
+        FactionHQ hq, OperationsState state, int wanted, string? label, List<CommanderPlatoon> calledUp)
     {
         if (wanted <= 0)
         {
@@ -185,6 +186,7 @@ internal sealed partial class CommanderOperationsService
                 // the platoon's reinforcement answer and clears the ground posture it was halfway
                 // through. Unassigning without it would carry an arc or a bound into the attack.
                 ReleaseFromMission(platoon);
+                calledUp.Add(platoon);
                 taken++;
                 CommanderAiLog.Note(
                     hq,
@@ -218,42 +220,60 @@ internal sealed partial class CommanderOperationsService
         return isForwardBase && hasPlatoon && !threatened;
     }
 
-    /// <summary>
-    /// Ranks a target worth attacking (design SS3): enemy-held control points adjacent to my front
-    /// first (nearest first), then enemy bases whose observed defence is beatable with what is
-    /// spare or forming. Null when nothing qualifies — the mission waits.
-    /// </summary>
-    private bool TryChooseOffensiveTarget(
-        FactionHQ hq, OperationsState state, out CommanderStrategicPoint? targetPoint, out Airbase? targetAirbase)
+    /// <summary>How many candidate targets one attack opening tries before giving up for this review.
+    /// Axis planning is cheap, but a commander with a long list of unreachable targets should not
+    /// walk all of them every 30 s.</summary>
+    private const int MaxOffensiveTargetAttempts = 4;
+
+    private readonly struct OffensiveTarget
     {
-        targetPoint = null;
-        targetAirbase = null;
-        float bestDistance = float.MaxValue;
+        internal readonly CommanderStrategicPoint? Point;
+        internal readonly Airbase? Airbase;
+        internal readonly float Distance;
+        internal readonly int Order;
+
+        internal OffensiveTarget(CommanderStrategicPoint? point, Airbase? airbase, float distance, int order)
+        {
+            Point = point;
+            Airbase = airbase;
+            Distance = distance;
+            Order = order;
+        }
+    }
+
+    private static readonly List<OffensiveTarget> offensiveTargets = new();
+    private static readonly List<CommanderPlatoon> calledUpPlatoons = new();
+
+    /// <summary>
+    /// Lists the targets worth attacking (design SS3), best first: enemy-held control points on the
+    /// front, nearest to ground this commander holds first; then enemy bases whose observed defence
+    /// is beatable with what is spare or forming, nearest to its territory first. A target that
+    /// already has an attack is left out, so concurrent attacks spread across targets.
+    /// <para>
+    /// Nearest to held ground, not <c>DistanceToEnemyMeters</c>: every enemy-held point is its own
+    /// nearest enemy asset, so that distance is 0 for all of them and the old "nearest first" pick
+    /// was really "most valuable anywhere on the map" (review H7). Points come before bases, as
+    /// before, but a point whose axes cannot be planned no longer hides the bases behind it: the
+    /// caller walks the list.
+    /// </para>
+    /// </summary>
+    private void CollectOffensiveTargets(FactionHQ hq, OperationsState state, List<OffensiveTarget> into)
+    {
+        into.Clear();
         for (int i = 0; i < state.RankedPoints.Count; i++)
         {
             CommanderRankedPoint ranked = state.RankedPoints[i];
             FactionHQ? owner = ranked.Point.GetOwner();
-            if (owner == null || ReferenceEquals(owner, hq) || !ranked.IsFront)
+            if (owner == null || ReferenceEquals(owner, hq) || !ranked.IsFront || HasAttackOn(state, ranked.Point, null))
             {
                 continue;
             }
 
-            if (ranked.DistanceToEnemyMeters < bestDistance)
-            {
-                bestDistance = ranked.DistanceToEnemyMeters;
-                targetPoint = ranked.Point;
-            }
-        }
-
-        if (targetPoint != null)
-        {
-            return true;
+            into.Add(new OffensiveTarget(ranked.Point, null, NearestHeldAssetDistance(hq, ranked.Point.Position), i));
         }
 
         int spare = CountSparePlatoons(state);
         int platoonSize = Mathf.Max(1, CommanderSettings.OperationsPlatoonSize);
-        Airbase? bestBase = null;
-        float bestBaseDistance = float.MaxValue;
         GlobalPosition territory = CommanderCaptureService.GetTerritoryCenter(hq);
         foreach (KeyValuePair<string, Airbase> entry in FactionRegistry.airbaseLookup)
         {
@@ -263,7 +283,8 @@ internal sealed partial class CommanderOperationsService
                 || airbase.center == null
                 || airbase.SavedAirbase == null
                 || !airbase.SavedAirbase.Capturable
-                || ReferenceEquals(airbase.CurrentHQ, hq))
+                || ReferenceEquals(airbase.CurrentHQ, hq)
+                || HasAttackOn(state, null, airbase))
             {
                 continue;
             }
@@ -276,15 +297,44 @@ internal sealed partial class CommanderOperationsService
             }
 
             float distance = CommanderGameAccess.HorizontalDistance(territory.AsVector3(), position.AsVector3());
-            if (distance < bestBaseDistance)
+            into.Add(new OffensiveTarget(null, airbase, distance, into.Count));
+        }
+
+        // Points first, then bases; nearest first inside each; the ranking order breaks ties so the
+        // choice is stable from review to review.
+        into.Sort((a, b) =>
+        {
+            bool aPoint = a.Point != null;
+            bool bPoint = b.Point != null;
+            if (aPoint != bPoint)
             {
-                bestBaseDistance = distance;
-                bestBase = airbase;
+                return aPoint ? -1 : 1;
+            }
+
+            int byDistance = a.Distance.CompareTo(b.Distance);
+            return byDistance != 0 ? byDistance : a.Order.CompareTo(b.Order);
+        });
+    }
+
+    /// <summary>Whether this commander already has an attack on the given point or base.</summary>
+    private static bool HasAttackOn(OperationsState state, CommanderStrategicPoint? point, Airbase? airbase)
+    {
+        for (int i = 0; i < state.Missions.Count; i++)
+        {
+            CommanderOperationsMission mission = state.Missions[i];
+            if (mission.Kind != CommanderMissionKind.Attack)
+            {
+                continue;
+            }
+
+            if ((point != null && ReferenceEquals(mission.Point, point))
+                || (airbase != null && ReferenceEquals(mission.TargetAirbase, airbase)))
+            {
+                return true;
             }
         }
 
-        targetAirbase = bestBase;
-        return targetAirbase != null;
+        return false;
     }
 
     /// <summary>B5's observed floor: a live observation and a stored floor, whichever is larger.</summary>
@@ -745,14 +795,31 @@ internal sealed partial class CommanderOperationsService
             return false;
         }
 
-        if (!TryChooseOffensiveTarget(hq, state, out CommanderStrategicPoint? targetPoint, out Airbase? targetAirbase))
+        calledUpPlatoons.Clear();
+        CollectOffensiveTargets(hq, state, offensiveTargets);
+        CommanderStrategicPoint? targetPoint = null;
+        Airbase? targetAirbase = null;
+        GlobalPosition target = default;
+        List<CommanderAssaultGroup> axes = new();
+        bool planned = false;
+        for (int i = 0; i < offensiveTargets.Count && i < MaxOffensiveTargetAttempts; i++)
         {
-            return false;
+            OffensiveTarget candidate = offensiveTargets[i];
+            GlobalPosition position = candidate.Point != null
+                ? candidate.Point.Position
+                : candidate.Airbase!.center.GlobalPosition();
+            if (TryPlanAxes(hq, position, axes) && axes.Count > 0)
+            {
+                targetPoint = candidate.Point;
+                targetAirbase = candidate.Airbase;
+                target = position;
+                planned = true;
+                break;
+            }
         }
 
-        GlobalPosition target = targetPoint != null ? targetPoint.Position : targetAirbase!.center.GlobalPosition();
-        List<CommanderAssaultGroup> axes = new();
-        if (!TryPlanAxes(hq, target, axes) || axes.Count == 0)
+        offensiveTargets.Clear();
+        if (!planned)
         {
             return false;
         }
@@ -764,7 +831,7 @@ internal sealed partial class CommanderOperationsService
         // raised allowance would permit attacks nobody could man.
         if (spare < minPlatoons)
         {
-            spare += CallUpQuietForwardBases(hq, state, minPlatoons - spare, label: null);
+            spare += CallUpQuietForwardBases(hq, state, minPlatoons - spare, label: null, calledUpPlatoons);
         }
 
         if (spare < minPlatoons)
@@ -789,6 +856,16 @@ internal sealed partial class CommanderOperationsService
         };
         mission.Axes.AddRange(axes);
         state.Missions.Add(mission);
+        // The called-up platoons go straight onto this attack. Left unassigned, the forward-base
+        // matching that runs before the attack matching in the same review found them standing on
+        // their old base with no mission and sent them straight back (review H12).
+        for (int i = 0; i < calledUpPlatoons.Count; i++)
+        {
+            AttachPlatoon(hq, calledUpPlatoons[i], mission, CommanderPlatoonState.Attacking);
+        }
+
+        calledUpPlatoons.Clear();
+
         state.Pressure = 0f;
         CommanderAiLog.Note(hq, $"{logVerb} {label} with {wanted} platoon(s) on {axes.Count} axis/axes.");
         // Source A (design.md, strike-packages_20260915 Section 1): every planned ground attack has a
@@ -925,7 +1002,13 @@ internal sealed partial class CommanderOperationsService
             for (int a = 0; a < mission.Axes.Count; a++)
             {
                 CommanderAssaultGroup group = mission.Axes[a];
-                if (group.Platoon != null && group.Platoon.Members.Count == 0)
+                // A platoon that has left this attack (withdrawn under strength, or taken by
+                // another mission since) is dropped from its axis too. ReleaseFromMission only
+                // clears Assigned, so the axis used to keep steering the remnant back toward the
+                // target, and resolving the attack could reset a platoon another mission now owns
+                // (review H11).
+                if (group.Platoon != null
+                    && (group.Platoon.Members.Count == 0 || !ReferenceEquals(group.Platoon.Mission, mission)))
                 {
                     group.Platoon = null;
                     // A dead axis must not keep the form-up alive: its arrival was what let the
@@ -1139,7 +1222,7 @@ internal sealed partial class CommanderOperationsService
         for (int a = 0; a < mission.Axes.Count; a++)
         {
             CommanderPlatoon? platoon = mission.Axes[a].Platoon;
-            if (platoon == null)
+            if (platoon == null || !ReferenceEquals(platoon.Mission, mission))
             {
                 continue;
             }

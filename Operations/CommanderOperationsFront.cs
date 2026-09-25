@@ -2215,14 +2215,17 @@ internal sealed partial class CommanderOperationsService
     /// <summary>Front points the enemy is at this review — what <see cref="MaxForwardBases"/> turns
     /// into forward-base demand. A point in contact whose threat mark has already timed out counts
     /// too: the contact stamp outlives the mark, and a point the enemy hit minutes ago is not a
-    /// quiet point.</summary>
-    private static int CountThreatenedFrontPoints(OperationsState state)
+    /// quiet point. A point another faction holds is left out: it is always front (it is its own
+    /// nearest enemy asset) and carries a mark as soon as its garrison is spotted, so counting it
+    /// grew the allowance by one for every enemy point in view (review H7).</summary>
+    private static int CountThreatenedFrontPoints(FactionHQ hq, OperationsState state)
     {
         int count = 0;
         for (int i = 0; i < state.RankedPoints.Count; i++)
         {
             CommanderRankedPoint ranked = state.RankedPoints[i];
-            if (ranked.IsFront && ranked.HasThreatMark)
+            FactionHQ? owner = ranked.Point.GetOwner();
+            if (ranked.IsFront && ranked.HasThreatMark && (owner == null || ReferenceEquals(owner, hq)))
             {
                 count++;
             }
@@ -2401,7 +2404,7 @@ internal sealed partial class CommanderOperationsService
         }
 
         int allowance = MaxForwardBases(
-            state.Platoons.Count, CommanderSettings.OperationsFobShare, CountThreatenedFrontPoints(state));
+            state.Platoons.Count, CommanderSettings.OperationsFobShare, CountThreatenedFrontPoints(hq, state));
         OrderForwardBasesByRank(state);
         int kept = 0;
         for (int i = 0; i < forwardBasesByRank.Count; i++)

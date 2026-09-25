@@ -388,6 +388,9 @@ internal sealed partial class CommanderOperationsService
         // The belt picture for this commander, once: every sortie below asks it the same question
         // (design.md, air-survival-layer_20260916 Layer 3).
         RefreshPostureBelts(hq);
+        // Whether this commander can fly suppression at all, asked at most once per watch and only
+        // when some sortie actually has a belt near it: the roster check walks the catalog.
+        bool? canFlyArad = null;
         for (int i = 0; i < state.AirSorties.Count; i++)
         {
             CommanderAirSortie sortie = state.AirSorties[i];
@@ -424,6 +427,21 @@ internal sealed partial class CommanderOperationsService
             int airDefence = beltApplies
                 ? LargestBeltNear(sortie.Center, CommanderSettings.AirBeltHoldRadiusMeters)
                 : 0;
+            // Only hold for a sweep that can actually be flown (review H10): the roster has an
+            // anti-radiation airframe, and the belt is inside the ring where the ARAD step pairs a
+            // suppression sortie with this objective. A hold waiting on a sweep that will never be
+            // opened ran to the give-up time, stood the sortie down, and repeated after the cooldown.
+            if (BeltWorthSuppressing(airDefence, CommanderSettings.AradClusterMinimum))
+            {
+                canFlyArad ??= CommanderEnemyCommanderService.HasRoleCandidate(
+                    hq, CommanderEnemyCommanderService.AirRole.Arad);
+                if (canFlyArad != true
+                    || !BeltWorthSuppressing(
+                        LargestBeltNear(sortie.Center, ObservedRadiusMeters), CommanderSettings.AradClusterMinimum))
+                {
+                    airDefence = 0;
+                }
+            }
             bool sweepIn = beltApplies && SweepHasGoneIn(state, sortie);
             bool beltHolds = beltApplies
                 && BeltHoldsSortie(airDefence, sweepIn, CommanderSettings.AradClusterMinimum);
@@ -514,8 +532,15 @@ internal sealed partial class CommanderOperationsService
         {
             CommanderAirSortie other = state.AirSorties[i];
             if (ReferenceEquals(other, sortie)
-                || !other.GoneIn
                 || (other.Kind != CommanderSortieKind.Arad && other.Kind != CommanderSortieKind.Strike))
+            {
+                continue;
+            }
+
+            // A suppression sortie is "in" once one of its aircraft is over the belt. Its GoneIn is
+            // never set (it starts true), so reading it counted a sortie with nothing bought yet as
+            // the sweep and released the hold at once (review H10).
+            if (other.Kind == CommanderSortieKind.Arad ? AradStillInbound(other) : !other.GoneIn)
             {
                 continue;
             }

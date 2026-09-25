@@ -777,9 +777,18 @@ internal sealed partial class CommanderOperationsService
             return false;
         }
 
-        if (live.Kind == CommanderSortieKind.Awacs || live.Kind == CommanderSortieKind.Strike)
+        if (live.Kind == CommanderSortieKind.Awacs)
         {
             return true; // one per commander, so the kind alone identifies it
+        }
+
+        if (live.Kind == CommanderSortieKind.Strike)
+        {
+            // Several strike packages can be open at once since concurrent attacks (one per attack
+            // plus the deliberate one), and each is re-posted as the same object, so identity is the
+            // match. Matching by kind merged one package's airframes and clocks into another's and
+            // bound them to both (review H9).
+            return ReferenceEquals(live, wanted);
         }
 
         if (live.Kind == CommanderSortieKind.Arad)
