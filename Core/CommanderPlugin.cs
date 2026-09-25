@@ -6,6 +6,8 @@ using UnityEngine;
 namespace GroundControlRts;
 
 [BepInPlugin(PluginInfo.Guid, PluginInfo.Name, PluginInfo.Version)]
+[BepInIncompatibility(PluginInfo.GroundControlGuid)]
+[BepInIncompatibility(PluginInfo.NuclearOptionCommanderGuid)]
 public sealed class CommanderPlugin : BaseUnityPlugin
 {
     internal static CommanderPlugin? Instance { get; private set; }

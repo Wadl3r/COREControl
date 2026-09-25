@@ -117,7 +117,7 @@ internal sealed partial class CommanderEnemyCommanderService : ICommanderTickPer
 
     /// <summary>True on the mission the mod ships, which plays itself.</summary>
     internal static bool IsDuelMission =>
-        CommanderFeatureGate.MissionName.IndexOf("Ground Control Duel", System.StringComparison.OrdinalIgnoreCase) >= 0;
+        CommanderFeatureGate.MissionName.IndexOf(PluginInfo.DuelMissionName, System.StringComparison.OrdinalIgnoreCase) >= 0;
 
     /// <summary>
     /// The mode actually in force. The duel forces MATCHED when the setting is off, so the built-in

@@ -1,6 +1,6 @@
-﻿# Building and installing Ground Control (RTS)
+﻿# Building and installing CORE Control
 
-Ground Control (RTS) is a BepInEx 5 plugin for Nuclear Option. It compiles against the game's own
+CORE Control is a BepInEx 5 plugin for Nuclear Option. It compiles against the game's own
 assemblies, so the build needs to know where the game is installed.
 
 ## Prerequisites
@@ -23,30 +23,30 @@ modules. Set it once for your user account. Quote the path: the folder name cont
 ```powershell
 [Environment]::SetEnvironmentVariable(
     "NUCLEAR_OPTION_DIR",
-    "I:\SteamLibrary\steamapps\common\Nuclear Option",
+    "D:\Steam\steamapps\common\Nuclear Option",
     "User")
 ```
 
 Open a new terminal afterwards so the variable is picked up. Alternatively pass it per build:
 
 ```powershell
-dotnet build GroundControlRts.csproj -c Release -p:GameDir="I:\SteamLibrary\steamapps\common\Nuclear Option"
+dotnet build COREControl.csproj -c Release -p:GameDir="D:\Steam\steamapps\common\Nuclear Option"
 ```
 
 ## 2. Build
 
 ```powershell
-dotnet build GroundControlRts.csproj -c Release
+dotnet build COREControl.csproj -c Release
 ```
 
 Output lands in `bin\Release\net472\`:
 
 | File | Purpose |
 | --- | --- |
-| `GroundControlRts.dll` | The plugin. |
-| `GroundControlRts.pdb` | Debug symbols; BepInEx stack traces get line numbers with it present. |
-| `Ground Control Duel.json` | A mission that ships with the mod. Copied from `Mission\` to the output root on purpose. |
-| `Ground Control Duel Far.json` | The far-start version of that duel, shipped the same way. |
+| `COREControl.dll` | The plugin. |
+| `COREControl.pdb` | Debug symbols; BepInEx stack traces get line numbers with it present. |
+| `CORE Control Duel.json` | A mission that ships with the mod. Copied from `Mission\` to the output root on purpose. |
+| `CORE Control Duel Far.json` | The far-start version of that duel, shipped the same way. |
 
 Game assemblies are referenced with `Private=false`, so they are not copied to the output.
 
@@ -55,27 +55,33 @@ Game assemblies are referenced with `Private=false`, so they are not copied to t
 Copy the **entire** output folder, not just the DLL, into the game's plugins folder:
 
 ```powershell
-$dst = "I:\SteamLibrary\steamapps\common\Nuclear Option\BepInEx\plugins\GroundControlRts"
+$dst = "D:\Steam\steamapps\common\Nuclear Option\BepInEx\plugins\COREControl"
 New-Item -ItemType Directory -Force $dst | Out-Null
 Copy-Item "bin\Release\net472\*" $dst -Recurse -Force
 ```
 
 The mission JSON files must sit beside the DLL: `CommanderMissionInstaller` reads them from the
 plugin folder when the game loads and installs them into the game's user mission list. A DLL-only
-copy logs a warning and the Ground Control Duel missions never appear.
+copy logs a warning and the CORE Control Duel missions never appear.
 
-If a `NuclearOptionCommander` folder exists in `BepInEx\plugins`, delete it. That is this mod under
-its old name; with both present every Harmony patch runs twice.
+CORE Control declares itself incompatible with its upstreams, Ground Control (RTS)
+(`com.groundcontrol.rts`, folder `GroundControlRts`) and Nuclear Option Commander
+(`com.nuclearoption.commander`, folder `NuclearOptionCommander`). They patch the same game methods,
+so with both loaded every Harmony patch would run twice; instead BepInEx skips CORE Control and logs
+which GUID blocked it. Move the upstream folder to `BepInEx\disabledPlugins` to play CORE Control.
+Nothing else collides: the config file, the plugin folder, the shipped missions and the save folder
+(`<persistentDataPath>\COREControlState`) all have names of their own.
 
 ## 4. Rebuild and reinstall in one go
 
 `build-and-install.ps1` in the repo root does steps 2 and 3 together (`build-release.bat` double-clicks it; `build-dev.bat` runs the hot-reload variant below), validates the game folder,
-and removes the legacy `NuclearOptionCommander` folder if it finds one.
+and warns (without deleting anything) if an upstream `GroundControlRts` or `NuclearOptionCommander`
+folder is in `BepInEx\plugins`.
 
 ```powershell
 .\build-and-install.ps1                 # uses $env:NUCLEAR_OPTION_DIR
 .\build-and-install.ps1 -Clean          # wipe bin\Release\net472 first
-.\build-and-install.ps1 -GameDir "I:\SteamLibrary\steamapps\common\Nuclear Option"
+.\build-and-install.ps1 -GameDir "D:\Steam\steamapps\common\Nuclear Option"
 ```
 
 If PowerShell refuses to run the script, allow local scripts for your user once:
@@ -99,7 +105,7 @@ Two double-click wrappers in the repo root:
 
 | File | Does |
 | --- | --- |
-| `build-release.bat` | Normal layout: `plugins\GroundControlRts\`, mission JSON included, offers to launch the game. Quit the game first. |
+| `build-release.bat` | Normal layout: `plugins\COREControl\`, mission JSON included, offers to launch the game. Quit the game first. |
 | `build-dev.bat` | Hot-reload layout: DLL+PDB into `scripts\`, release copy removed. Run with the game open. |
 
 Switch to hot-reload mode once (game closed, because the release copy is locked while loaded):
@@ -108,7 +114,7 @@ Switch to hot-reload mode once (game closed, because the release copy is locked 
 .\build-dev.bat                   # or: .\build-and-install.ps1 -Dev
 ```
 
-This removes `plugins\GroundControlRts\` and puts the DLL and PDB in `scripts\`. Launch the
+This removes `plugins\COREControl\` and puts the DLL and PDB in `scripts\`. Launch the
 game. From then on, with the game running:
 
 ```powershell
@@ -116,7 +122,7 @@ game. From then on, with the game running:
 ```
 
 Watch the BepInEx console for `Unloading old plugin instances` then the mod's own
-`Ground Control (RTS) ... loaded` line. The mission you are in stays loaded.
+`CORE Control ... loaded` line. The mission you are in stays loaded.
 
 What a reload resets: everything the mod holds in memory — control groups, camera bookmarks, the
 enemy commander's plan state. Faction funds, units and buildings are game state and survive.
@@ -129,7 +135,7 @@ What does not need a reload at all: anything in CMD → Settings. Those are live
 On by default. While a mission runs the mod writes a small JSON snapshot every 20 s (and once more
 as the old assembly unloads); a hot reload reads it once and deletes it, a normal launch never reads
 it. To turn it off, set `KeepStateAcrossHotReload = false` under `[Developer]` in
-`BepInEx\config\com.groundcontrol.rts.cfg` with the game closed (there is no in-game toggle).
+`BepInEx\config\com.wadl3r.corecontrol.cfg` with the game closed (there is no in-game toggle).
 
 A `build-dev.bat` reload keeps:
 
@@ -151,7 +157,7 @@ N dock levels`.
 Back to the normal layout (the shipped mission JSON is only installed from `plugins\`):
 
 ```powershell
-.\build-release.bat               # removes scripts\ copy, restores plugins\GroundControlRts\
+.\build-release.bat               # removes scripts\ copy, restores plugins\COREControl\
 ```
 
 Never have the mod in both `plugins\` and `scripts\`. ScriptEngine refuses to load a GUID that
@@ -160,9 +166,9 @@ is already loaded, and if it did load, every Harmony patch would run twice.
 ## Checking it loaded
 
 Launch Nuclear Option and look in `<game>\BepInEx\LogOutput.log` for lines from
-`Ground Control (RTS)`. A clean load prints the plugin version, one
-`Installed mission '...'` line per shipped mission on first run (`Ground Control Duel` and
-`Ground Control Duel Far`), and no `self-check FAILED` lines. The self-checks run at plugin load and are the mod's
+`CORE Control`. A clean load prints the plugin version, one
+`Installed mission '...'` line per shipped mission on first run (`CORE Control Duel` and
+`CORE Control Duel Far`), and no `self-check FAILED` lines. The self-checks run at plugin load and are the mod's
 only automated tests; a failed one means a tuning constant or price ladder is wrong.
 
 ## Keeping up with upstream

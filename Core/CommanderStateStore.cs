@@ -212,7 +212,7 @@ internal sealed class CommanderStateStore : ICommanderTickPersistent, ICommander
     internal static string StatePathFor(string missionName, string suffix)
     {
         return Path.Combine(
-            Path.Combine(Application.persistentDataPath, "CommanderState"),
+            Path.Combine(Application.persistentDataPath, PluginInfo.StateFolderName),
             SanitizeFileName(missionName) + suffix);
     }
 

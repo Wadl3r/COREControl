@@ -4,7 +4,7 @@ namespace GroundControlRts;
 
 /// <summary>
 /// The whole strategic save, one JSON object per mission
-/// (<c>Application.persistentDataPath/CommanderState/&lt;mission&gt;.strategic.json</c>). This is
+/// (<c>Application.persistentDataPath/COREControlState/&lt;mission&gt;.strategic.json</c>). This is
 /// the SECOND file the mod writes, deliberately separate from the hot-reload snapshot
 /// (<see cref="CommanderStateSnapshot"/>): the two are read on different runs, accepted by
 /// different gates and carry different things, and folding them together would mean a mission

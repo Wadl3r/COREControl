@@ -4,7 +4,7 @@ namespace GroundControlRts;
 
 /// <summary>
 /// The whole hot-reload snapshot, one JSON object per mission
-/// (<c>Application.persistentDataPath/CommanderState/&lt;mission&gt;.json</c>). Plain public
+/// (<c>Application.persistentDataPath/COREControlState/&lt;mission&gt;.json</c>). Plain public
 /// properties throughout so <c>Newtonsoft.Json</c> can round-trip it with no attributes; see
 /// <see cref="CommanderStateStore"/> for the file itself and the session guard.
 /// </summary>

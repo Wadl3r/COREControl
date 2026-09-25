@@ -84,7 +84,7 @@ console. Everything else is verified in the running game.
 1. **Every decision table, price ladder or threshold gets a `SelfCheck` case** next to the
    existing ones. If a constant can be retuned into nonsense, a self-check says so at load.
 2. **Never claim done without the running game.** Build, install with the script, launch, load
-   `Ground Control Duel` (or a supported stock mode), perform the actual player action, and read
+   `CORE Control Duel` (or a supported stock mode), perform the actual player action, and read
    `BepInEx\LogOutput.log` for the mod's own log lines and any `FAILED` or exception. The
    developer launches and plays; you say exactly what to do and what log lines prove it.
 3. **Server-only calls are real.** Anything touching `factionFunds`, `AddSupplyUnit`, spawning or

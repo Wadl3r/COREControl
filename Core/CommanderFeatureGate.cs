@@ -10,7 +10,7 @@ internal static class CommanderFeatureGate
         "Confrontation",
         "Domination",
         "Escalation",
-        "Ground Control",
+        PluginInfo.DuelMissionName,
         "Terminal Control"
     };
 

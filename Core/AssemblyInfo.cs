@@ -1,7 +1,7 @@
 using System.Reflection;
 
-[assembly: AssemblyTitle("Ground Control (RTS)")]
-[assembly: AssemblyProduct("Ground Control (RTS)")]
+[assembly: AssemblyTitle("CORE Control")]
+[assembly: AssemblyProduct("CORE Control")]
 [assembly: AssemblyVersion("0.7.6.0")]
 [assembly: AssemblyFileVersion("0.7.6.0")]
 [assembly: AssemblyInformationalVersion("0.7.6.0")]

@@ -1,11 +1,11 @@
 @echo off
 REM Release build. Double-click wrapper for build-and-install.ps1 (normal plugins layout).
-REM Builds the mod, installs the whole output folder into BepInEx\plugins\GroundControlRts, removes any
+REM Builds the mod, installs the whole output folder into BepInEx\plugins\COREControl, removes any
 REM hot-reload copy from BepInEx\scripts, then offers to launch the game. Quit the game first.
 REM For the no-restart development loop use build-dev.bat instead.
 setlocal
 cd /d "%~dp0"
-if "%NUCLEAR_OPTION_DIR%"=="" set "NUCLEAR_OPTION_DIR=I:\SteamLibrary\steamapps\common\Nuclear Option"
+if "%NUCLEAR_OPTION_DIR%"=="" set "NUCLEAR_OPTION_DIR=D:\Steam\steamapps\common\Nuclear Option"
 
 powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0build-and-install.ps1" %*
 if errorlevel 1 (

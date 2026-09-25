@@ -5,7 +5,7 @@
     "Path": ""
   },
   "missionSettings": {
-    "description": "Far-start commander duel. The same one-on-one match as Ground Control Duel, but the two sides start on opposite corners of the map: Boscali at North Boscali Airbase in the north-west, Primeva at Sandrift Airbase in the south-east, about 69 km apart instead of 20.\n\nThe long gap is the point. Neither side can sit over the other's runway from the first minute, so the opening is about building an economy and pushing outwards rather than a standing fight above the two strips.\n\nEach side starts with its airbase, two vehicle depots and a handful of AA mounts. There is no pre-placed army and no pre-placed industry: you build from scratch out of faction funds with the Ground Control (RTS) BUILD window - gold mines for income, factories for units - buy ground forces at your depots, and take the fight across the map.\n\nFour airbases are neutral and in play between the two starts: Maris Airport, K92 Highway Strip, Dustbowl Highway Strip and South Boscali General Aviation. They are not evenly shared out - Dustbowl is 18 km from Sandrift while Boscali's nearest is Maris at 34 km - so this is a long-range map, not a mirror.\n\nWin by capturing the enemy airbase. Mines and factories are buildings, so bombing the other commander's economy is as valid as shooting his tanks.\n\nRequires the Ground Control (RTS) mod, and only the host can construct buildings.",
+    "description": "One-on-one commander duel. Each side starts with a single highway airstrip, two vehicle depots and a handful of AA mounts. Every other airbase on the map is shut.\n\nThere is no pre-placed army and no pre-placed industry: you build your economy from scratch out of faction funds with the CORE Control BUILD window - gold mines for income, factories for units - buy ground forces at your depots, and take the fight to the other strip.\n\nWin by capturing the enemy airstrip. Mines and factories are buildings, so bombing the other commander's economy is as valid as shooting his tanks.\n\nRequires the CORE Control mod, and only the host can construct buildings.",
     "allowEventContent": false,
     "Tags": [],
     "playerMode": "SingleAndMultiplayer",
@@ -21,15 +21,15 @@
       "IsOverride": false,
       "Value": {
         "Position": {
-          "x": -18632.0,
-          "y": 1038.76,
-          "z": 32049.0
+          "x": 18756.0,
+          "y": 1036.16,
+          "z": 12406.0
         },
         "Rotation": {
           "x": 0.0,
-          "y": 0.93258,
+          "y": 0.9986,
           "z": 0.0,
-          "w": 0.36091
+          "w": 0.0523
         }
       }
     },
@@ -62,9 +62,9 @@
       "faction": "Boscali",
       "UniqueName": "bdf_VehicleDepot1_1",
       "globalPosition": {
-        "x": -18600.0,
-        "y": 137.9,
-        "z": 32520.0
+        "x": 18500.66,
+        "y": 133.334961,
+        "z": 12031.3125
       },
       "rotation": {
         "x": 0.0,
@@ -91,9 +91,9 @@
       "faction": "Boscali",
       "UniqueName": "bdf_VehicleDepot1_2",
       "globalPosition": {
-        "x": -18234.9219,
-        "y": 137.9,
-        "z": 32408.6328
+        "x": 19153.0781,
+        "y": 133.576172,
+        "z": 12765.6328
       },
       "rotation": {
         "x": 0.0,
@@ -120,9 +120,9 @@
       "faction": "Boscali",
       "UniqueName": "bdf_Emplacement1_23mm_1",
       "globalPosition": {
-        "x": -18629.8477,
-        "y": 137.9,
-        "z": 31509.3457
+        "x": 18758.1523,
+        "y": 140.870285,
+        "z": 11866.3457
       },
       "rotation": {
         "x": 0.0,
@@ -149,9 +149,9 @@
       "faction": "Boscali",
       "UniqueName": "bdf_Emplacement1_23mm_2",
       "globalPosition": {
-        "x": -19197.77,
-        "y": 137.9,
-        "z": 31638.9775
+        "x": 18190.23,
+        "y": 133.4865,
+        "z": 11995.9775
       },
       "rotation": {
         "x": 0.0,
@@ -178,9 +178,9 @@
       "faction": "Boscali",
       "UniqueName": "bdf_Emplacement1_MANPADS_1",
       "globalPosition": {
-        "x": -18270.3125,
-        "y": 137.9,
-        "z": 31482.3438
+        "x": 19117.6875,
+        "y": 136.799728,
+        "z": 11839.3438
       },
       "rotation": {
         "x": 0.0,
@@ -207,9 +207,9 @@
       "faction": "Primeva",
       "UniqueName": "pala_VehicleDepot1_1",
       "globalPosition": {
-        "x": 27588.4551,
-        "y": 135.45,
-        "z": -18555.9688
+        "x": 13106.7656,
+        "y": 144.734863,
+        "z": -7095.81445
       },
       "rotation": {
         "x": 0.0,
@@ -236,9 +236,9 @@
       "faction": "Primeva",
       "UniqueName": "pala_VehicleDepot1_2",
       "globalPosition": {
-        "x": 27540.0,
-        "y": 135.45,
-        "z": -18900.0
+        "x": 13470.166,
+        "y": 144.257446,
+        "z": -8109.40527
       },
       "rotation": {
         "x": 0.0,
@@ -265,9 +265,9 @@
       "faction": "Primeva",
       "UniqueName": "pala_Emplacement1_23mm_1",
       "globalPosition": {
-        "x": 27580.5566,
-        "y": 135.45,
-        "z": -18396.6758
+        "x": 13098.8662,
+        "y": 143.3588,
+        "z": -6936.52148
       },
       "rotation": {
         "x": 0.0,
@@ -294,9 +294,9 @@
       "faction": "Primeva",
       "UniqueName": "pala_Emplacement1_23mm_2",
       "globalPosition": {
-        "x": 28047.77,
-        "y": 135.45,
-        "z": -19603.9063
+        "x": 13566.08,
+        "y": 146.650772,
+        "z": -8143.752
       },
       "rotation": {
         "x": 0.0,
@@ -323,9 +323,9 @@
       "faction": "Primeva",
       "UniqueName": "pala_Emplacement1_MANPADS_1",
       "globalPosition": {
-        "x": 27729.0117,
-        "y": 135.45,
-        "z": -18899.1172
+        "x": 13247.3223,
+        "y": 144.882751,
+        "z": -7438.963
       },
       "rotation": {
         "x": 0.0,
@@ -434,15 +434,15 @@
         "IsOverride": true,
         "Value": {
           "Position": {
-            "x": -18632.0,
-            "y": 1038.76,
-            "z": 32049.0
+            "x": 18756.0,
+            "y": 1036.16,
+            "z": 12406.0
           },
           "Rotation": {
             "x": 0.0,
-            "y": 0.93258,
+            "y": 0.9986,
             "z": 0.0,
-            "w": 0.36091
+            "w": 0.0523
           }
         }
       }
@@ -528,15 +528,15 @@
         "IsOverride": true,
         "Value": {
           "Position": {
-            "x": 27807.69,
-            "y": 1035.47,
-            "z": -18910.1543
+            "x": 13326.0,
+            "y": 1046.12,
+            "z": -7450.0
           },
           "Rotation": {
             "x": 0.0,
-            "y": -0.36106,
+            "y": 0.0,
             "z": 0.0,
-            "w": 0.93254
+            "w": 1.0
           }
         }
       }
@@ -545,11 +545,11 @@
   "airbases": [
     {
       "IsOverride": true,
-      "faction": "Boscali",
+      "faction": "None",
       "UniqueName": "North Boscali Airbase",
       "DisplayName": "North Boscali Airbase",
-      "Disabled": false,
-      "Capturable": true,
+      "Disabled": true,
+      "Capturable": false,
       "CaptureDefense": 10.0,
       "CaptureRange": 1561.0,
       "Center": {
@@ -599,7 +599,7 @@
     },
     {
       "IsOverride": true,
-      "faction": "None",
+      "faction": "Boscali",
       "UniqueName": "K92 Highway Strip",
       "DisplayName": "K92 Highway Strip",
       "Disabled": false,
@@ -626,7 +626,7 @@
     },
     {
       "IsOverride": true,
-      "faction": "None",
+      "faction": "Primeva",
       "UniqueName": "Dustbowl Highway Strip",
       "DisplayName": "Dustbowl Highway Strip",
       "Disabled": false,
@@ -653,7 +653,7 @@
     },
     {
       "IsOverride": true,
-      "faction": "Primeva",
+      "faction": "None",
       "UniqueName": "Sandrift Airbase",
       "DisplayName": "Sandrift Airbase",
       "Disabled": false,
@@ -771,9 +771,9 @@
     },
     {
       "Type": "CaptureAirbase",
-      "UniqueName": "BDF_Capture_Enemy_Base",
+      "UniqueName": "BDF_Capture_Enemy_Strip",
       "Faction": "Boscali",
-      "DisplayName": "Capture Sandrift Airbase",
+      "DisplayName": "Capture Dustbowl Highway Strip",
       "Hidden": false,
       "Outcomes": [
         "Duel_Victory",
@@ -782,14 +782,14 @@
       "completeOrder": "CompleteAll",
       "completeSomePercent": 0.5,
       "targetAirbases": [
-        "Sandrift Airbase"
+        "Dustbowl Highway Strip"
       ]
     },
     {
       "Type": "CaptureAirbase",
-      "UniqueName": "PALA_Capture_Enemy_Base",
+      "UniqueName": "PALA_Capture_Enemy_Strip",
       "Faction": "Primeva",
-      "DisplayName": "Capture North Boscali Airbase",
+      "DisplayName": "Capture K92 Highway Strip",
       "Hidden": false,
       "Outcomes": [
         "Duel_Victory",
@@ -798,7 +798,7 @@
       "completeOrder": "CompleteAll",
       "completeSomePercent": 0.5,
       "targetAirbases": [
-        "North Boscali Airbase"
+        "K92 Highway Strip"
       ]
     }
   ],
@@ -812,7 +812,7 @@
     {
       "Type": "ShowMessage",
       "UniqueName": "Duel_Victory_Message",
-      "Message": "The enemy airbase has fallen.",
+      "Message": "The enemy airstrip has fallen.",
       "PlaySound": true,
       "ObjectiveFactionOnly": true
     }

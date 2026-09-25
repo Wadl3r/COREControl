@@ -18,8 +18,8 @@ internal static class CommanderMissionInstaller
     /// <summary>Mission file names shipped beside the plugin DLL, without the extension.</summary>
     private static readonly string[] ShippedMissions =
     {
-        "Ground Control Duel",
-        "Ground Control Duel Far",
+        PluginInfo.DuelMissionName,
+        PluginInfo.DuelFarMissionName,
     };
 
     internal static void InstallShippedMissions()

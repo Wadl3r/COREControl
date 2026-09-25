@@ -1,11 +1,14 @@
-﻿# Ground Control (RTS)
+﻿# CORE Control
 
 A BepInEx mod for **Nuclear Option** that adds RTS-style command gameplay on top of the base
 game: a free camera, unit selection, orders, group control, ground/naval production and an
 air-tasking layer. Intended mainly for the **Escalation** and **Terminal Control** game modes,
-and it ships with a 1v1 base-against-base mission of its own, **Ground Control Duel**, in two
+and it ships with a 1v1 base-against-base mission of its own, **CORE Control Duel**, in two
 versions: the original close-quarters one and a far-start one with the two sides at opposite
 corners of the map.
+
+CORE Control is a fork of **Ground Control (RTS)**; see [Credits](#credits) for the upstream
+projects it builds on.
 ## Requirements
 
 - Nuclear Option
@@ -14,12 +17,15 @@ corners of the map.
 
 ## Installation
 
-1. Download `GroundControlRts.zip` from the latest release.
+1. Download `COREControl.zip` from the latest release.
 2. Steam → right-click Nuclear Option → Manage → Browse local files.
 3. If there is no `BepInEx` folder, install BepInEx 5 first.
-   If you ran the mod under its old name, delete the `NuclearOptionCommander` folder in
-   `BepInEx\plugins` first -- otherwise both copies load and every patch runs twice.
-4. Copy the `GroundControlRts` folder from the zip into:
+   CORE Control does not load while **Ground Control (RTS)** (`GroundControlRts`) or
+   **Nuclear Option Commander** (`NuclearOptionCommander`) is loaded: all three patch the same game
+   code, so every patch would run twice. Move those folders out of `BepInEx\plugins` (for example
+   to `BepInEx\disabledPlugins`) to play CORE Control; the log names the one that blocked it.
+   Nothing else is shared — each mod has its own folder, config file, missions and saves.
+4. Copy the `COREControl` folder from the zip into:
 
 ```
 Nuclear Option\BepInEx\plugins
@@ -457,10 +463,10 @@ the mod's own rule and it applies on every mission, so the round always has an e
 mission author never wrote a capture objective for a particular base. It is also why the build
 radius matters: lose your last base and you can neither launch nor build, so the game is over.
 
-## Ground Control Duel (the missions that ship with the mod)
+## CORE Control Duel (the missions that ship with the mod)
 
-The mod installs two missions of its own, **Ground Control Duel** and **Ground Control Duel Far**,
-into your mission list the first time it loads. Nothing extra to download — but the whole `GroundControlRts` folder has
+The mod installs two missions of its own, **CORE Control Duel** and **CORE Control Duel Far**,
+into your mission list the first time it loads. Nothing extra to download — but the whole `COREControl` folder has
 to be in `BepInEx\plugins`, not just the DLL. Host it from the normal mission list.
 
 It is a **1v1 commander duel, base against base**:
@@ -520,9 +526,9 @@ Only the host can construct buildings, because buildings are spawned server-side
 two-human duel the guest commander plays the depots, the orders and the air war, and the host
 builds.
 
-### Ground Control Duel Far (the far-start version)
+### CORE Control Duel Far (the far-start version)
 
-**Ground Control Duel Far** is the same match with the two sides pulled apart. On the original map
+**CORE Control Duel Far** is the same match with the two sides pulled apart. On the original map
 the strips are 20 km apart, close enough that both sides' standing patrols meet within the first
 minutes and the match can settle into one long air battle over the middle before either economy has
 grown.
@@ -545,7 +551,7 @@ changes, so save one under a different name before editing it.
 
 ## Enemy commander
 
-Off by default on every mission except **Ground Control Duel** and **Ground Control Duel Far**,
+Off by default on every mission except **CORE Control Duel** and **CORE Control Duel Far**,
 which force it on. Cycle it in
 **Settings → Gameplay**.
 
@@ -827,7 +833,20 @@ dotnet build -c Release -p:GameDir="C:\Program Files (x86)\Steam\steamapps\commo
 ```
 
 `GameDir` can also come from a `NUCLEAR_OPTION_DIR` environment variable. The output DLL lands
-in `bin/Release/net472/` and goes into `BepInEx/plugins/GroundControlRts/`.
+in `bin/Release/net472/` and goes into `BepInEx/plugins/COREControl/`.
 
 See [CLAUDE.md](CLAUDE.md) for the architecture notes and [CHANGELOG.md](CHANGELOG.md) for the
 release history.
+
+## Credits
+
+CORE Control is a fork. Almost everything in it was written upstream, in this order:
+
+| Project | Author | Contribution |
+| --- | --- | --- |
+| [NOCommander](https://github.com/DontKnowWhatImDoingHere/NOCommander) (Nuclear Option Commander) | DontKnowWhatImDoingHere | The original mod: RTS camera, selection, orders, depots, Air Command, supply helicopters, SAM site tools. |
+| [RTS-Commander](https://github.com/simonsimme/RTS-Commander) (Ground Control (RTS)) | simonsimme | Renamed it Ground Control; economy and building, the enemy commander, base capture, the Ground Control Duel mission, camera rework. |
+| [RTS-Commander](https://github.com/AMAUKDev/RTS-Commander) (Ground Control (RTS)) | AMAUKDev | Build tooling, player-side AI commander, strategic points, platoon operations, air wing, the far-start duel and strategic save. The direct upstream of this fork. |
+
+The upstream history is kept intact in this repository's git log. Like its upstreams, CORE Control
+is released into the public domain under the [Unlicense](LICENSE).
