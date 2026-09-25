@@ -699,7 +699,7 @@ internal sealed class CommanderCameraFollowService : ICommanderDeactivate, IComm
     {
         if (InputFieldChecker.InsideInputField
             || CommanderTacticalMapService.Instance?.IsFullscreenOpen == true
-            || !CommanderShortcutInput.IsPressed(CommanderSettings.CameraFreeLook))
+            || !CommanderSettings.IsFreeLookHeld)
         {
             return;
         }

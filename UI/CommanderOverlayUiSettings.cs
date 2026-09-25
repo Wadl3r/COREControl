@@ -795,6 +795,7 @@ internal sealed partial class CommanderOverlayUi
         DrawBinding(new Rect(left, rowY + 224f, columnWidth, 30f), "Speed boost", "boost");
         Rect centerFollowRect = new(left, rowY + 256f, columnWidth, 30f);
         DrawBinding(centerFollowRect, "Center / follow", "center_follow");
+        DrawBinding(new Rect(left, rowY + 288f, columnWidth, 30f), "Free look (2nd)", "look_alt");
 
         DrawBinding(new Rect(right, rowY, columnWidth, 30f), "Select / place", "primary");
         DrawBinding(new Rect(right, rowY + 32f, columnWidth, 30f), "Move / order", "secondary");
@@ -816,7 +817,7 @@ internal sealed partial class CommanderOverlayUi
         if (centerFollowRect.Contains(Event.current.mousePosition))
         {
             CommanderUiTheme.DrawHelpOverlay(
-                new Rect(left, rowY + 292f, columnWidth, 68f),
+                new Rect(left, rowY + 324f, columnWidth, 68f),
                 "Press briefly to center on the selected unit. Hold to center and follow it.");
         }
 
@@ -903,6 +904,7 @@ internal sealed partial class CommanderOverlayUi
             "up" => CommanderSettings.CameraUp,
             "down" => CommanderSettings.CameraDown,
             "look" => CommanderSettings.CameraFreeLook,
+            "look_alt" => CommanderSettings.CameraFreeLookAlt,
             "boost" => CommanderSettings.CameraBoost,
             "primary" => CommanderSettings.PrimaryAction,
             "secondary" => CommanderSettings.SecondaryAction,
@@ -936,6 +938,7 @@ internal sealed partial class CommanderOverlayUi
             case "up": CommanderSettings.CameraUp = shortcut; break;
             case "down": CommanderSettings.CameraDown = shortcut; break;
             case "look": CommanderSettings.CameraFreeLook = shortcut; break;
+            case "look_alt": CommanderSettings.CameraFreeLookAlt = shortcut; break;
             case "boost": CommanderSettings.CameraBoost = shortcut; break;
             case "primary": CommanderSettings.PrimaryAction = shortcut; break;
             case "secondary": CommanderSettings.SecondaryAction = shortcut; break;
@@ -966,6 +969,7 @@ internal sealed partial class CommanderOverlayUi
         CommanderSettings.CameraUp = new KeyboardShortcut(KeyCode.Q);
         CommanderSettings.CameraDown = new KeyboardShortcut(KeyCode.E);
         CommanderSettings.CameraFreeLook = new KeyboardShortcut(KeyCode.Mouse2);
+        CommanderSettings.CameraFreeLookAlt = new KeyboardShortcut(KeyCode.RightAlt);
         CommanderSettings.CameraBoost = new KeyboardShortcut(KeyCode.LeftShift);
         CommanderSettings.CameraCenterFollow = new KeyboardShortcut(KeyCode.Space);
     }

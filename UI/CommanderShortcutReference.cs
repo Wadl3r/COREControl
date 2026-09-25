@@ -27,7 +27,7 @@ internal static class CommanderShortcutReference
         buffer.Add(new Entry("Rise / descend", Keys(CommanderSettings.CameraUp, CommanderSettings.CameraDown)));
         buffer.Add(new Entry("Speed boost", Key(CommanderSettings.CameraBoost), "Hold."));
         buffer.Add(new Entry("Zoom", "Mouse wheel", "Moves toward whatever the cursor is over."));
-        buffer.Add(new Entry("Look around", Key(CommanderSettings.CameraFreeLook),
+        buffer.Add(new Entry("Look around", Keys(CommanderSettings.CameraFreeLook, CommanderSettings.CameraFreeLookAlt),
             CommanderSettings.CameraOrbitLook
                 ? "Hold: orbits the point under the cursor."
                 : "Hold: turns the camera in place."));

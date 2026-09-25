@@ -949,6 +949,11 @@ internal static class CommanderSettings
     internal static KeyboardShortcut SelectSameType { get => GetShortcut("SelectSameType", KeyCode.LeftControl, "Hold while clicking a unit to select every unit of that type the faction owns."); set => Set("Keybinds", "SelectSameType", value); }
     internal static KeyboardShortcut CycleIdleUnit { get => GetShortcut("CycleIdleUnit", KeyCode.Period, "Select and jump to the next friendly ground/naval unit with no RTS order."); set => Set("Keybinds", "CycleIdleUnit", value); }
     internal static KeyboardShortcut CameraFreeLook { get => GetShortcut("CameraFreeLook", KeyCode.Mouse2, "Hold while moving the mouse to look around in RTS mode."); set => Set("Keybinds", "CameraFreeLook", value); }
+    // Right Alt, not Left: Left Alt is the delete modifier and would show DEL while looking.
+    internal static KeyboardShortcut CameraFreeLookAlt { get => GetShortcut("CameraFreeLookAlt", KeyCode.RightAlt, "Second key for free look, for a mouse without a usable middle button."); set => Set("Keybinds", "CameraFreeLookAlt", value); }
+
+    internal static bool IsFreeLookHeld =>
+        CommanderShortcutInput.IsPressed(CameraFreeLook) || CommanderShortcutInput.IsPressed(CameraFreeLookAlt);
     internal static KeyboardShortcut CameraBoost { get => GetShortcut("CameraBoost", KeyCode.LeftShift, "Hold for faster RTS camera movement."); set => Set("Keybinds", "CameraBoost", value); }
     internal static KeyboardShortcut MapBoxSelect { get => GetShortcut("MapBoxSelect", KeyCode.LeftControl, "Hold while dragging on the map to draw a selection box; a plain drag pans the map."); set => Set("Keybinds", "MapBoxSelect", value); }
     internal static KeyboardShortcut TogglePlayerCommander { get => GetShortcut("TogglePlayerCommander", KeyCode.None, "Toggle the AI commander for your own faction."); set => Set("Keybinds", "TogglePlayerCommander", value); }
@@ -1015,6 +1020,7 @@ internal static class CommanderSettings
         _ = PlacementRotateRight;
         _ = PlacementConformGround;
         _ = CameraFreeLook;
+        _ = CameraFreeLookAlt;
         _ = CameraBoost;
         _ = MapBoxSelect;
         _ = QueueWaypoint;

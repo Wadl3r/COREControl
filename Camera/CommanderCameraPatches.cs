@@ -320,7 +320,7 @@ internal static class CommanderFreeCameraInputPatch
     /// </summary>
     private static void LookInput(CameraStateManager cam, ref CameraInputState state)
     {
-        if (!CommanderShortcutInput.IsPressed(CommanderSettings.CameraFreeLook))
+        if (!CommanderSettings.IsFreeLookHeld)
         {
             orbiting = false;
             return;
