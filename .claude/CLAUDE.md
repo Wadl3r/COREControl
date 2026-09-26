@@ -67,7 +67,11 @@ One folder per subsystem. Large services are split into partial classes by conce
   2x/4x. `IsDueRealtime` is for UI refresh. `Stagger` spreads first runs apart.
 - **Settings.** BepInEx config entries in `Core/CommanderSettings.cs`, each a property over
   `Get<T>(section, key, default)` / `Set`, plus a `_ = Property;` line in `Initialize` so the entry is
-  written to the config file on first run. The settings window is `UI/CommanderOverlayUiSettings.cs`.
+  written to the config file on first run. 17 entries have no such line and only appear in the file
+  once something reads them: the 12 `UI/Show*` panel toggles other than `ShowCommandButton` and
+  `ShowBuildUi`, `Keybinds/TogglePlayerCommander`, and `Air Command/LoadoutBalance`,
+  `TargetAltitude`, `AirGuardTargetOrdnance` and `AradSaturationAttack`. The settings window is
+  `UI/CommanderOverlayUiSettings.cs`.
 - **Game internals.** `Core/CommanderGameAccess.cs` wraps most of them. Harmony patches live in
   `*Patches.cs` next to the service they serve; `CommanderPlugin.PatchEachClass` applies them one
   class at a time. Every patch body catches its own exceptions and reports them through
@@ -101,7 +105,7 @@ One folder per subsystem. Large services are split into partial classes by conce
 
 ## Testing
 
-- There is no test project. 23 subsystem `SelfCheck()` methods and `CommanderServiceRegistryCheck.Run()`
+- There is no test project. 22 subsystem `SelfCheck()` methods and `CommanderServiceRegistryCheck.Run()`
   run from `CommanderPlugin.Awake` and log `... self-check FAILED ...` as errors. A check that throws
   logs `... threw during load and was skipped` and the load carries on.
 - Runtime faults caught at a patch or service boundary log `<site> threw and was skipped`.
