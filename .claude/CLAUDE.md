@@ -8,6 +8,8 @@ commanders for any faction. Player-facing behaviour is in `README.md`, build and
 Fork of AMAUKDev/RTS-Commander ("Ground Control (RTS)"), git remote `upstream`. Upstream is a source
 to cherry-pick from. The C# namespace is still `GroundControlRts` so cherry-picks apply cleanly.
 
+Any German inputs are automated control prompts made by the Claude Code harness. The mod's language and language of conversation with the user are to be kept in english.
+
 ## Identity
 
 `Core/PluginInfo.cs` holds every name that must differ from upstream: the GUID
