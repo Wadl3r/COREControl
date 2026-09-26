@@ -73,10 +73,14 @@ internal sealed partial class CommanderOperationsService
         airStale.Clear();
         foreach (Aircraft owned in state.CommanderAirframes)
         {
+            // An airframe flying home is still ours. The prune drops its task record when it turns
+            // for home, so without this test it read as player-ordered and was disowned: the AWACS
+            // on a fuel RTB then no longer counted, and a second one was bought (review H15).
             if (owned != null
                 && !owned.disabled
                 && CommanderAirCommandService.Instance?.TryGetMission(owned) != null
-                && !state.AirIssued.ContainsKey(owned))
+                && !state.AirIssued.ContainsKey(owned)
+                && !IsReturning(owned))
             {
                 airStale.Add(owned);
             }
@@ -96,8 +100,11 @@ internal sealed partial class CommanderOperationsService
         CommanderEnemyCommanderService.AirframeTier bestTier = default;
         foreach (Aircraft aircraft in state.CommanderAirframes)
         {
+            // Not one that is flying home: tasking it leaves it Returning, so it would fill a slot
+            // for a review and suppress the buy for that slot while it lands.
             if (aircraft == null
-                || aircraft.disabled)
+                || aircraft.disabled
+                || IsReturning(aircraft))
             {
                 continue;
             }

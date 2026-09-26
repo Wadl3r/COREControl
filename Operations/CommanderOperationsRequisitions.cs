@@ -331,6 +331,19 @@ internal sealed partial class CommanderOperationsService
             }
         }
 
+        // A forward base's construction trucks on the road and its delivered loads waiting to be
+        // consumed belong to the order. Unlisted here, the pool sweep took them back every review:
+        // a forward base could claim the convoy truck as its own, or the pool sale could sell it,
+        // and the order then counted it lost (review H13).
+        for (int i = 0; i < state.FobOrders.Count; i++)
+        {
+            CommanderFobOrder order = state.FobOrders[i];
+            if (order.Convoy.Contains(unit) || order.Arrivals.Contains(unit))
+            {
+                return true;
+            }
+        }
+
         return false;
     }
 

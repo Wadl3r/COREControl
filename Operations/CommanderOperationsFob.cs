@@ -2791,6 +2791,10 @@ internal sealed partial class CommanderOperationsService
             CommanderFobOrder order = flight.Order;
             order.Delivered++;
             order.LastProgressAt = Time.time;
+            // Out of the pool as it joins the order: the registration claim may already have pooled
+            // it, and a pooled vehicle can be handed to a picket or platoon before BuildFob consumes it.
+            state.Pool.Remove(unit);
+            state.PoolIssued.Remove(unit);
             order.Arrivals.Add(unit);
             // A load on the ground is proof the air is flyable, exactly as a picket drop is.
             state.InsertionLossStreak = 0;
@@ -3025,7 +3029,7 @@ internal sealed partial class CommanderOperationsService
         // left to deliver, so it goes back to the pool rather than being quietly forgotten.
         for (int i = 0; i < order.Convoy.Count; i++)
         {
-            if (order.Convoy[i] != null && !order.Convoy[i].disabled)
+            if (order.Convoy[i] != null && !order.Convoy[i].disabled && !state.Pool.Contains(order.Convoy[i]))
             {
                 state.Pool.Add(order.Convoy[i]);
             }
@@ -3058,7 +3062,7 @@ internal sealed partial class CommanderOperationsService
         CommanderSupplyHeliService.Instance?.CancelInsertion(hq, order.Point);
         for (int i = 0; i < order.Convoy.Count; i++)
         {
-            if (order.Convoy[i] != null && !order.Convoy[i].disabled)
+            if (order.Convoy[i] != null && !order.Convoy[i].disabled && !state.Pool.Contains(order.Convoy[i]))
             {
                 state.Pool.Add(order.Convoy[i]);
             }
@@ -3066,7 +3070,7 @@ internal sealed partial class CommanderOperationsService
 
         for (int i = 0; i < order.Arrivals.Count; i++)
         {
-            if (order.Arrivals[i] != null && !order.Arrivals[i].disabled)
+            if (order.Arrivals[i] != null && !order.Arrivals[i].disabled && !state.Pool.Contains(order.Arrivals[i]))
             {
                 state.Pool.Add(order.Arrivals[i]);
             }

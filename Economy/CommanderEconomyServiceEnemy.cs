@@ -134,6 +134,10 @@ internal sealed partial class CommanderEconomyService
         if (price > 0f)
         {
             savings = Mathf.Min(banked + Mathf.Max(0f, allocation), price);
+            // Banked before the spend: the forward-base order reads the bank itself
+            // (StructureSavingsFor), and on the review the bank first reached the price it still
+            // saw last review's figure and refused (review E4).
+            structureSavings[hq] = savings;
             if (savings >= price && hq.factionFunds >= price)
             {
                 spent = SpendNextEnemyStructure(hq);
@@ -382,23 +386,29 @@ internal sealed partial class CommanderEconomyService
             : 0f;
     }
 
-    /// <summary>Builds whatever <see cref="GetEnemyBuildReserve"/> said this commander wants next.</summary>
+    /// <summary>
+    /// Builds whatever <see cref="GetEnemyBuildReserve"/> said this commander wants next, and only
+    /// that: each branch is the same condition, in the same order, and a failed build ends the walk.
+    /// It used to fall through to the next builder, so a mine that could not be sited bought a radar,
+    /// a forward base or a factory at its own price while the bank was debited by the mine's, and
+    /// none of those builders checks the balance (review H14).
+    /// </summary>
     private bool TryBuildEnemyEconomy(FactionHQ hq)
     {
-        // Same order as GetEnemyBuildReserve, because that method is what saved up for this one.
-        if (WantsSiteMine(hq) && TryBuildEnemyMine(hq))
+        if (WantsSiteMine(hq))
         {
-            return true;
+            return TryBuildEnemyMine(hq);
         }
 
-        if (TryBuildBaseFacility(hq))
+        if (NextBaseFacilityCost(hq) > 0f)
         {
-            return true;
+            return TryBuildBaseFacility(hq);
         }
 
-        if (TryBuildEnemyRadar(hq))
+        BuildingDefinition? radar = ResolveCategoryDefinition(BuildingType.RDR, preferDearest: true);
+        if (radar != null && TryGetUncoveredBase(hq, BuildingType.RDR, RadarCoverageMeters, out _))
         {
-            return true;
+            return TryBuildEnemyRadar(hq);
         }
 
         bool duel = CommanderEnemyCommanderService.IsDuelMission;
@@ -408,9 +418,9 @@ internal sealed partial class CommanderEconomyService
             return TryBuildEnemyMine(hq);
         }
 
-        if (CommanderOperationsService.TryOrderFob(hq))
+        if (CommanderOperationsService.WantsFob(hq))
         {
-            return true;
+            return CommanderOperationsService.TryOrderFob(hq);
         }
 
         if (CommanderSettings.FactoriesEnabled
@@ -419,9 +429,12 @@ internal sealed partial class CommanderEconomyService
             return TryBuildEnemyFactory(hq);
         }
 
-        if (TryBuildEnemyDefence(hq))
+        BuildingDefinition? defence = ResolveCategoryDefinition(BuildingType.DEF, preferDearest: false);
+        if (defence != null
+            && TryGetBaseShortOfBuildings(
+                hq, BuildingType.DEF, BaseBuildingCoverageMeters, EnemyDefenceBuildingTarget, out _))
         {
-            return true;
+            return TryBuildEnemyDefence(hq);
         }
 
         return TryBuildEnemyNavalDock(hq);

@@ -115,6 +115,15 @@ internal sealed partial class CommanderOperationsService
                 continue;
             }
 
+            // A helicopter bound to a sortie never gets an Air Command mission (the tasking takes
+            // aeroplanes only), so it read as idle here and was sent home every review, and rotary
+            // CAS never flew (review H16). Bound, it belongs to its sortie and flies on the game's
+            // own helicopter AI.
+            if (!CommanderAirCommandService.HasPlanePilot(owned) && IsBoundToAnySortie(state, owned))
+            {
+                continue;
+            }
+
             idleSweep.Add(owned);
         }
 
